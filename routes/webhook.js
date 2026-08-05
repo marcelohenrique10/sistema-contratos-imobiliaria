@@ -3,6 +3,10 @@ const router = express.Router();
 const db = require('../database');
 
 function checkAuth(req, res, next) {
+  if (!process.env.WEBHOOK_SECRET) {
+    return res.status(500).json({ sucesso: false, erro: 'WEBHOOK_SECRET não configurado no servidor' });
+  }
+
   const auth = req.headers['authorization'] || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : auth;
   if (token !== process.env.WEBHOOK_SECRET) {
@@ -17,22 +21,58 @@ function logWebhook(tipo, payload, status, erro = null) {
   ).run([tipo, JSON.stringify(payload), status, erro]);
 }
 
+// O formulário informa o número da unidade ("1001"), não o id do banco.
+function resolverUnidadeId({ unidadeId, unidadeNumero, empreendimentoId }) {
+  if (unidadeId) return parseInt(unidadeId);
+  if (!unidadeNumero || !empreendimentoId) return null;
+
+  const unidade = db.prepare(
+    'SELECT id FROM unidades WHERE empreendimentoId = ? AND TRIM(numero) = TRIM(?)'
+  ).get([empreendimentoId, String(unidadeNumero)]);
+
+  return unidade ? unidade.id : null;
+}
+
+// Remove o prefixo numérico da lista suspensa do formulário ("1. Contrato..." -> "Contrato...")
+function normalizarTipoDocumento(tipo) {
+  return String(tipo || '').replace(/^\s*\d+\s*[.)-]\s*/, '').trim();
+}
+
 router.post('/cliente', checkAuth, (req, res) => {
-  const { nome, cpfCnpj, telefone, email, tipo, observacoes, empreendimentoId, unidadeId } = req.body;
+  const { nome, cpfCnpj, telefone, email, tipo, observacoes, empreendimentoId, unidadeNumero } = req.body;
+
+  if (!nome) {
+    logWebhook('cliente', req.body, 'erro', 'Campo obrigatório ausente: nome');
+    return res.status(400).json({ sucesso: false, erro: 'Campo obrigatório ausente: nome' });
+  }
 
   try {
-    const result = db.prepare(
-      'INSERT INTO clientes (nome, cpfCnpj, telefone, email, tipo, observacoes, empreendimentoId, unidadeId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-    ).run([nome, cpfCnpj || null, telefone || null, email || null, tipo || 'Comprador', observacoes || null, empreendimentoId || null, unidadeId || null]);
+    const unidadeId = resolverUnidadeId({ unidadeId: req.body.unidadeId, unidadeNumero, empreendimentoId });
 
-    const novoId = Number(result.lastInsertRowid);
+    // Reenvio da mesma resposta do formulário não deve duplicar o cliente.
+    const existente = cpfCnpj
+      ? db.prepare('SELECT id FROM clientes WHERE cpfCnpj = ?').get(cpfCnpj)
+      : null;
 
-    if (unidadeId) {
-      db.prepare('UPDATE unidades SET clienteId = ?, status = ? WHERE id = ?').run([novoId, 'negociacao', unidadeId]);
+    let clienteId;
+
+    if (existente) {
+      clienteId = existente.id;
+      logWebhook('cliente', req.body, 'sucesso', 'Cliente já existente, reaproveitado');
+    } else {
+      const result = db.prepare(
+        'INSERT INTO clientes (nome, cpfCnpj, telefone, email, tipo, observacoes, empreendimentoId, unidadeId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      ).run([nome, cpfCnpj || null, telefone || null, email || null, tipo || 'Comprador', observacoes || null, empreendimentoId || null, unidadeId]);
+
+      clienteId = Number(result.lastInsertRowid);
+      logWebhook('cliente', req.body, 'sucesso');
     }
 
-    logWebhook('cliente', req.body, 'sucesso');
-    res.json({ sucesso: true, id: novoId });
+    if (unidadeId) {
+      db.prepare('UPDATE unidades SET clienteId = ?, status = ? WHERE id = ?').run([clienteId, 'negociacao', unidadeId]);
+    }
+
+    res.json({ sucesso: true, id: clienteId, unidadeId, jaExistia: Boolean(existente) });
   } catch (err) {
     logWebhook('cliente', req.body, 'erro', err.message);
     res.status(500).json({ sucesso: false, erro: err.message });
@@ -40,16 +80,25 @@ router.post('/cliente', checkAuth, (req, res) => {
 });
 
 router.post('/contrato', checkAuth, (req, res) => {
-  const { clienteId, empreendimentoId, unidadeId, categoria, nome } = req.body;
+  const { clienteId, empreendimentoId, unidadeNumero, categoria, nome } = req.body;
+
+  if (!clienteId) {
+    logWebhook('contrato', req.body, 'erro', 'Campo obrigatório ausente: clienteId');
+    return res.status(400).json({ sucesso: false, erro: 'Campo obrigatório ausente: clienteId' });
+  }
 
   try {
+    const unidadeId = resolverUnidadeId({ unidadeId: req.body.unidadeId, unidadeNumero, empreendimentoId });
+    const categoriaNormalizada = normalizarTipoDocumento(categoria);
+    const nomeNormalizado = normalizarTipoDocumento(nome);
+
     const id = `wh-${Date.now()}`;
     db.prepare(
       'INSERT INTO contratos (id, nome, categoria, empreendimentoId, unidadeId, clienteId, status) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).run([id, nome, categoria || null, empreendimentoId || null, unidadeId || null, clienteId, 'em_preenchimento']);
+    ).run([id, nomeNormalizado, categoriaNormalizada || null, empreendimentoId || null, unidadeId, parseInt(clienteId), 'em_preenchimento']);
 
     logWebhook('contrato', req.body, 'sucesso');
-    res.json({ sucesso: true, id });
+    res.json({ sucesso: true, id, unidadeId });
   } catch (err) {
     logWebhook('contrato', req.body, 'erro', err.message);
     res.status(500).json({ sucesso: false, erro: err.message });

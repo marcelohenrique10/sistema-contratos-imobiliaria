@@ -98,7 +98,10 @@ router.get('/empreendimentos', (req, res) => {
 });
 
 router.post('/empreendimentos', (req, res) => {
-  const { nome, endereco, status, descricao, memorialLink, plantaLink, tabelaVendaLink } = req.body;
+  const {
+    nome, endereco, status, descricao, memorialLink, plantaLink, tabelaVendaLink,
+    razaoSocial, cnpj, socioAdmin, email
+  } = req.body;
 
   const id = nome
     .toLowerCase()
@@ -107,8 +110,12 @@ router.post('/empreendimentos', (req, res) => {
     .replace(/\s+/g, '-');
 
   db.prepare(
-    'INSERT INTO empreendimentos (id, nome, endereco, status, descricao, memorialLink, plantaLink, tabelaVendaLink) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run([id, nome, endereco, status, descricao, memorialLink || '#', plantaLink || '#', tabelaVendaLink || '#']);
+    'INSERT INTO empreendimentos (id, nome, endereco, status, descricao, memorialLink, plantaLink, tabelaVendaLink, razaoSocial, cnpj, socioAdmin, email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run([
+    id, nome, endereco, status, descricao,
+    memorialLink || '#', plantaLink || '#', tabelaVendaLink || '#',
+    razaoSocial || null, cnpj || null, socioAdmin || null, email || null
+  ]);
 
   criarEstruturaDocumentos(id);
 

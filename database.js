@@ -90,6 +90,22 @@ db.exec(`
   );
 `);
 
+// Dados da SPE do empreendimento: cada um é uma sociedade própria, com CNPJ
+// próprio, e aparece como VENDEDORA nos contratos. Adicionadas depois da
+// criação original da tabela, por isso via ALTER.
+const colunasEmpreendimento = db.prepare('PRAGMA table_info(empreendimentos)').all().map((c) => c.name);
+
+[
+  'razaoSocial',
+  'cnpj',
+  'socioAdmin',
+  'email'
+].forEach((coluna) => {
+  if (!colunasEmpreendimento.includes(coluna)) {
+    db.exec(`ALTER TABLE empreendimentos ADD COLUMN ${coluna} TEXT`);
+  }
+});
+
 // Seed empreendimentos
 if (db.prepare('SELECT COUNT(*) as n FROM empreendimentos').get().n === 0) {
   const ins = db.prepare(
