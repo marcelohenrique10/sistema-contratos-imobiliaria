@@ -51,7 +51,14 @@ router.get('/documentos', (req, res) => {
     LEFT JOIN empreendimentos e ON d.empreendimentoId = e.id
     LEFT JOIN unidades u ON d.unidadeId = u.id
     LEFT JOIN clientes c ON d.clienteId = c.id
-  `).all();
+  `).all().map((doc) => {
+    // Os registros de exemplo apontam para arquivos que nunca existiram.
+    // Só oferece download do que estiver mesmo no disco.
+    const relativo = String(doc.caminho || '').replace(/^\/storage\//, '');
+    const disponivel = Boolean(relativo) && fs.existsSync(path.join(__dirname, '..', 'storage', relativo));
+
+    return { ...doc, disponivel };
+  });
 
   res.render('documentos', { documentos });
 });

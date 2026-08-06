@@ -167,7 +167,7 @@
       "parameters": {
         "sendTo": "SUBSTITUIR_EMAIL_DESTINO",
         "subject": "=Novo documento gerado: {{ $('Extrair Campos forms 2').item.json.tipoDocumento }}",
-        "message": "=Documento: {{ $('Extrair Campos forms 2').item.json.tipoDocumento }}\nCliente: {{ $('Extrair Campos forms 2').item.json.nome }}\nResponsável: {{ $('Extrair Campos forms 2').item.json.responsavel }}\nData: {{ $('Extrair Campos forms 2').item.json.dataHora }}",
+        "message": "=Documento: {{ $('Extrair Campos forms 2').item.json.tipoDocumento }}\nCliente: {{ $('Extrair Campos forms 2').item.json.nome }}\nResponsável: {{ $('Extrair Campos forms 2').item.json.responsavel }}\nData: {{ $('Extrair Campos forms 2').item.json.dataHora }}\nArquivo: {{ $json.arquivo }}\nCampos sem preenchimento: {{ ($json.camposSemValor || []).join(', ') || 'nenhum' }}",
         "options": {}
       },
       "id": "206c62e8-b77a-488b-a25f-61b03deaa9ed",
@@ -175,7 +175,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2,
       "position": [
-        928,
+        1184,
         -384
       ],
       "webhookId": "8de2a612-ecb4-450f-898a-41f617ad6ac5",
@@ -185,6 +185,33 @@
           "name": "Gmail OAuth2 API"
         }
       }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.APP_BASE_URL }}/webhook/documento",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $vars.APP_WEBHOOK_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  documento: $('Extrair Campos forms 2').item.json.documento,\n  empreendimentoId: $('Extrair Campos forms 2').item.json.empreendimentoId,\n  unidadeNumero: $('Extrair Campos forms 2').item.json.unidadeNumero,\n  clienteId: $('Criar Cliente forms 2').item.json.id,\n  contratoId: $json.id\n}) }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0000-4000-8000-000000000001",
+      "name": "Gerar Documento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        928,
+        -384
+      ]
     }
   ],
   "pinData": {},
@@ -223,6 +250,17 @@
       ]
     },
     "Criar contrato forms 2": {
+      "main": [
+        [
+          {
+            "node": "Gerar Documento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar Documento": {
       "main": [
         [
           {

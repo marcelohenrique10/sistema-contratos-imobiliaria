@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
+const { gerarDocumento } = require('../services/documento');
 
 function checkAuth(req, res, next) {
   if (!process.env.WEBHOOK_SECRET) {
@@ -140,6 +141,53 @@ router.post('/unidade-status', checkAuth, (req, res) => {
     res.json({ sucesso: true, id: unidadeId });
   } catch (err) {
     logWebhook('unidade-status', req.body, 'erro', err.message);
+    res.status(500).json({ sucesso: false, erro: err.message });
+  }
+});
+
+// Recebe o objeto `documento` montado pelo nó "Extrair Campos" do n8n,
+// gera o arquivo a partir do modelo e registra na tela de Documentos.
+router.post('/documento', checkAuth, async (req, res) => {
+  const { documento, empreendimentoId, unidadeNumero, clienteId, contratoId } = req.body;
+
+  if (!documento || !documento.tipo) {
+    logWebhook('documento', req.body, 'erro', 'Payload sem documento.tipo');
+    return res.status(400).json({ sucesso: false, erro: 'Payload sem documento.tipo' });
+  }
+
+  try {
+    const empreendimento = empreendimentoId
+      ? db.prepare('SELECT * FROM empreendimentos WHERE id = ?').get(empreendimentoId)
+      : null;
+
+    const resultado = await gerarDocumento({ documento, empreendimento, empreendimentoId, unidadeNumero });
+    const unidadeId = resolverUnidadeId({ unidadeId: req.body.unidadeId, unidadeNumero, empreendimentoId });
+
+    const insercao = db.prepare(
+      'INSERT INTO documentos (tipo, nome, empreendimentoId, unidadeId, clienteId, caminho, data) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).run([
+      normalizarTipoDocumento(documento.tipo),
+      `${normalizarTipoDocumento(documento.tipo)} - ${(documento.comprador || {}).nome || 'sem nome'}`,
+      empreendimentoId || null,
+      unidadeId,
+      clienteId ? parseInt(clienteId) : null,
+      resultado.caminhoPublico,
+      new Date().toISOString().slice(0, 10)
+    ]);
+
+    if (contratoId) {
+      db.prepare('UPDATE contratos SET status = ? WHERE id = ?').run(['gerado', contratoId]);
+    }
+
+    logWebhook('documento', req.body, 'sucesso');
+    res.json({
+      sucesso: true,
+      id: Number(insercao.lastInsertRowid),
+      arquivo: resultado.caminhoPublico,
+      camposSemValor: resultado.placeholdersSemValor
+    });
+  } catch (err) {
+    logWebhook('documento', req.body, 'erro', err.message);
     res.status(500).json({ sucesso: false, erro: err.message });
   }
 });

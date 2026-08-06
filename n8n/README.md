@@ -7,7 +7,11 @@ Sempre que ele mudar no n8n, exporte de novo por cima deste arquivo.
 
 ```
 Google Form → planilha de respostas → n8n (polling 1 min, "rowAdded")
-  → Extrair Campos → POST /webhook/cliente → POST /webhook/contrato → Gmail
+  → Extrair Campos
+  → POST /webhook/cliente     (cria o cliente, vincula a unidade)
+  → POST /webhook/contrato    (cria o contrato)
+  → POST /webhook/documento   (gera o .docx a partir do modelo)
+  → Gmail                     (avisa, com link do arquivo)
 ```
 
 O n8n é intencionalmente "burro": ele não resolve ids nem escolhe modelo de
@@ -87,6 +91,47 @@ existe, o id existente é devolvido com `jaExistia: true`.
 
 O prefixo numérico da lista suspensa do formulário (`"1. "`) é removido pela
 aplicação, então mandar com ou sem prefixo dá no mesmo.
+
+### `POST /webhook/documento`
+
+Gera o arquivo. Recebe o objeto `documento` inteiro, do jeito que o nó
+"Extrair Campos" monta:
+
+```json
+{
+  "empreendimentoId": "high-tower",
+  "unidadeNumero": "1002",
+  "clienteId": 5,
+  "contratoId": "wh-123456",
+  "documento": {
+    "tipo": "Contrato de Promessa de Compra e Venda",
+    "dadosGerais": { "dataDocumento": "05/08/2026" },
+    "comprador": { "nome": "...", "cpf": "..." },
+    "conjuge": { "nome": "..." },
+    "testemunhas": [{ "nome": "..." }],
+    "compraVenda": { "parcelas": [] }
+  }
+}
+```
+
+Resposta:
+
+```json
+{
+  "sucesso": true,
+  "id": 4,
+  "arquivo": "/storage/documentos/high-tower/contratos/contrato-....docx",
+  "camposSemValor": ["EMPREENDIMENTO_SOCIO_ADMIN"]
+}
+```
+
+`camposSemValor` lista os placeholders que ficaram em branco — serve para o
+operador saber o que ainda precisa preencher à mão. Vai junto no e-mail.
+
+Se `contratoId` for informado, o contrato correspondente passa para "gerado".
+
+Tipos sem modelo cadastrado (hoje, o Contrato de Permuta) devolvem erro
+explicando qual tipo faltou, em vez de gerar arquivo errado.
 
 ### Outros
 
