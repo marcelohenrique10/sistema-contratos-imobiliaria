@@ -1,0 +1,224 @@
+<%- include("partials/header") %>
+
+<script type="application/json" id="unidades-data"><%- JSON.stringify(unidades).replace(/</g, '\\u003c') %></script>
+
+<section class="page-header">
+  <h2>Enviar documento</h2>
+  <p>Para contratos assinados fora do sistema, procurações e comprovantes.</p>
+</section>
+
+<% if (erro) { %>
+  <div class="empty-state" style="color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;margin-bottom:16px;">
+    <%= erro %>
+  </div>
+<% } %>
+
+<section class="form-card">
+  <form action="/documentos/enviar" method="POST" enctype="multipart/form-data">
+
+    <!-- ---------------- CLIENTE ---------------- -->
+    <h3 style="margin:0 0 12px;">1. Cliente</h3>
+
+    <div class="form-group" style="margin-bottom:16px;">
+      <label>
+        <input type="radio" name="clienteModo" value="existente" checked /> Já cadastrado
+      </label>
+      <label style="margin-left:20px;">
+        <input type="radio" name="clienteModo" value="novo" /> Cadastrar novo
+      </label>
+    </div>
+
+    <div data-bloco="cliente-existente">
+      <div class="form-group">
+        <label for="clienteId">Cliente</label>
+        <select id="clienteId" name="clienteId">
+          <option value="">Selecione</option>
+          <% clientes.forEach(c => { %>
+            <option value="<%= c.id %>" <%= String(clientePreSelecionado) === String(c.id) ? 'selected' : '' %>>
+              <%= c.nome %><%= c.cpfCnpj ? ' — ' + c.cpfCnpj : '' %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
+    </div>
+
+    <div data-bloco="cliente-novo" style="display:none;">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="clienteNome">Nome completo</label>
+          <input type="text" id="clienteNome" name="clienteNome" />
+        </div>
+        <div class="form-group">
+          <label for="clienteCpfCnpj">CPF ou CNPJ</label>
+          <input type="text" id="clienteCpfCnpj" name="clienteCpfCnpj" />
+          <small>Se já existir um cliente com este documento, ele será reaproveitado.</small>
+        </div>
+        <div class="form-group">
+          <label for="clienteTelefone">Telefone</label>
+          <input type="text" id="clienteTelefone" name="clienteTelefone" />
+        </div>
+        <div class="form-group">
+          <label for="clienteEmail">E-mail</label>
+          <input type="email" id="clienteEmail" name="clienteEmail" />
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------------- EMPREENDIMENTO ---------------- -->
+    <h3 style="margin:28px 0 12px;border-top:1px solid #e5e7eb;padding-top:20px;">2. Empreendimento</h3>
+
+    <div class="form-group" style="margin-bottom:16px;">
+      <label>
+        <input type="radio" name="empreendimentoModo" value="existente" checked /> Já cadastrado
+      </label>
+      <label style="margin-left:20px;">
+        <input type="radio" name="empreendimentoModo" value="novo" /> Cadastrar novo
+      </label>
+    </div>
+
+    <div data-bloco="empreendimento-existente">
+      <div class="form-group">
+        <label for="empreendimentoId">Empreendimento</label>
+        <select id="empreendimentoId" name="empreendimentoId">
+          <option value="">Selecione</option>
+          <% empreendimentos.forEach(e => { %>
+            <option value="<%= e.id %>"><%= e.nome %></option>
+          <% }) %>
+        </select>
+      </div>
+    </div>
+
+    <div data-bloco="empreendimento-novo" style="display:none;">
+      <div class="form-group">
+        <label for="empreendimentoNome">Nome do empreendimento</label>
+        <input type="text" id="empreendimentoNome" name="empreendimentoNome" />
+        <small>Criado como ativo. Complete os dados da SPE depois, em Empreendimentos.</small>
+      </div>
+    </div>
+
+    <!-- ---------------- UNIDADE ---------------- -->
+    <h3 style="margin:28px 0 12px;border-top:1px solid #e5e7eb;padding-top:20px;">3. Unidade</h3>
+
+    <div class="form-group" style="margin-bottom:16px;">
+      <label>
+        <input type="radio" name="unidadeModo" value="existente" checked /> Já cadastrada
+      </label>
+      <label style="margin-left:20px;">
+        <input type="radio" name="unidadeModo" value="nova" /> Cadastrar nova
+      </label>
+    </div>
+
+    <div data-bloco="unidade-existente">
+      <div class="form-group">
+        <label for="unidadeId">Unidade</label>
+        <select id="unidadeId" name="unidadeId">
+          <option value="">Selecione o empreendimento primeiro</option>
+        </select>
+      </div>
+    </div>
+
+    <div data-bloco="unidade-nova" style="display:none;">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="unidadeNumero">Número</label>
+          <input type="text" id="unidadeNumero" name="unidadeNumero" placeholder="1101" />
+          <small>Ela passa a aparecer no espelho de vendas.</small>
+        </div>
+        <div class="form-group">
+          <label for="unidadePavimento">Pavimento</label>
+          <input type="text" id="unidadePavimento" name="unidadePavimento" placeholder="11º" />
+        </div>
+        <div class="form-group">
+          <label for="unidadeTipologia">Tipologia</label>
+          <input type="text" id="unidadeTipologia" name="unidadeTipologia" placeholder="3Q" />
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------------- DOCUMENTO ---------------- -->
+    <h3 style="margin:28px 0 12px;border-top:1px solid #e5e7eb;padding-top:20px;">4. Documento</h3>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="tipo">Tipo do documento</label>
+        <select id="tipo" name="tipo" required>
+          <option value="">Selecione</option>
+          <% tipos.forEach(t => { %>
+            <option value="<%= t %>"><%= t %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="arquivo">Arquivo</label>
+        <input type="file" id="arquivo" name="arquivo" required
+               accept="<%= extensoes.join(',') %>" />
+        <small><%= extensoes.join(', ') %> — até <%= tamanhoMaximoMb %> MB</small>
+      </div>
+    </div>
+
+    <div class="empty-state" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;text-align:left;margin-top:16px;">
+      O sistema não lê o conteúdo do arquivo. Se este contrato tem parcelas,
+      lance-as em <strong>Financeiro</strong> para que entrem no fluxo de caixa.
+    </div>
+
+    <div class="actions" style="margin-top:20px;">
+      <button type="submit" class="button">Enviar documento</button>
+      <a class="button secondary" href="/documentos">Cancelar</a>
+    </div>
+  </form>
+</section>
+
+<script>
+  const TODAS_UNIDADES = JSON.parse(document.getElementById("unidades-data").textContent);
+
+  function alternar(nome, mapa) {
+    document.querySelectorAll('input[name="' + nome + '"]').forEach(function (radio) {
+      radio.addEventListener("change", function () {
+        Object.entries(mapa).forEach(function ([valor, bloco]) {
+          document.querySelector('[data-bloco="' + bloco + '"]').style.display =
+            radio.value === valor && radio.checked ? "block" : "none";
+        });
+      });
+    });
+  }
+
+  alternar("clienteModo", { existente: "cliente-existente", novo: "cliente-novo" });
+  alternar("empreendimentoModo", { existente: "empreendimento-existente", novo: "empreendimento-novo" });
+  alternar("unidadeModo", { existente: "unidade-existente", nova: "unidade-nova" });
+
+  // Unidades do empreendimento escolhido
+  document.getElementById("empreendimentoId").addEventListener("change", function () {
+    const select = document.getElementById("unidadeId");
+    select.innerHTML = '<option value="">Selecione</option>';
+
+    const doEmpreendimento = TODAS_UNIDADES.filter(function (u) {
+      return u.empreendimentoId === this.value;
+    }, this);
+
+    if (doEmpreendimento.length === 0) {
+      select.innerHTML = '<option value="">Nenhuma unidade — cadastre uma nova</option>';
+      return;
+    }
+
+    doEmpreendimento.forEach(function (u) {
+      const opt = document.createElement("option");
+      opt.value = u.id;
+      opt.textContent = u.numero + " (" + u.status + ")";
+      select.appendChild(opt);
+    });
+  });
+
+  // Empreendimento novo não tem unidade para escolher
+  document.querySelectorAll('input[name="empreendimentoModo"]').forEach(function (r) {
+    r.addEventListener("change", function () {
+      if (this.value === "novo" && this.checked) {
+        document.querySelector('input[name="unidadeModo"][value="nova"]').checked = true;
+        document.querySelector('[data-bloco="unidade-existente"]').style.display = "none";
+        document.querySelector('[data-bloco="unidade-nova"]').style.display = "block";
+      }
+    });
+  });
+</script>
+
+<%- include("partials/footer") %>

@@ -273,6 +273,16 @@ router.post('/documento', checkAuth, async (req, res) => {
   }
 });
 
+// Lista os empreendimentos ativos para o formulário manter o menu suspenso
+// em dia. Consumido pelo Apps Script (ver forms/README.md).
+router.get('/empreendimentos', checkAuth, (req, res) => {
+  const lista = db.prepare(
+    "SELECT id, nome FROM empreendimentos WHERE status <> 'concluido' ORDER BY nome"
+  ).all();
+
+  res.json({ sucesso: true, empreendimentos: lista });
+});
+
 router.get('/logs', checkAuth, (req, res) => {
   const logs = db.prepare('SELECT * FROM webhook_logs ORDER BY created_at DESC LIMIT 50').all();
   res.json({ sucesso: true, logs });

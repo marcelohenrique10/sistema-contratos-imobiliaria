@@ -1,14 +1,26 @@
 <%- include("partials/header") %>
 
 <section class="page-header">
-  <h2>Documentos</h2>
-  <p>Arquivos gerados e vinculados aos empreendimentos.</p>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+    <div>
+      <h2>Documentos</h2>
+      <p>Arquivos gerados pelo sistema e documentos enviados pela equipe.</p>
+    </div>
+    <a class="button" href="/documentos/enviar">Enviar documento</a>
+  </div>
 </section>
+
+<% if (typeof enviado !== 'undefined' && enviado) { %>
+  <div class="empty-state" style="color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:16px;">
+    Documento enviado e vinculado.
+  </div>
+<% } %>
 
 <table>
   <thead>
     <tr>
       <th>Nome</th>
+      <th>Origem</th>
       <th>Tipo</th>
       <th>Empreendimento</th>
       <th>Unidade</th>
@@ -20,7 +32,19 @@
   <tbody>
     <% documentos.forEach(doc => { %>
       <tr>
-        <td><%= doc.nome %></td>
+        <td>
+          <%= doc.nome %>
+          <% if (doc.origem === 'enviado' && doc.nomeOriginal) { %>
+            <div style="color:#9ca3af;font-size:11px;"><%= doc.nomeOriginal %></div>
+          <% } %>
+        </td>
+        <td>
+          <% if (doc.origem === 'enviado') { %>
+            <span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:11px;padding:2px 7px;border-radius:4px;">Enviado</span>
+          <% } else { %>
+            <span style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;font-size:11px;padding:2px 7px;border-radius:4px;">Gerado</span>
+          <% } %>
+        </td>
         <td><%= doc.tipo %></td>
         <td><%= doc.empreendimentoNome %></td>
         <td><%= doc.unidadeNumero %></td>

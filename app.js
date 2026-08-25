@@ -17,6 +17,13 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// No Express 5, requisição sem corpo deixa req.body indefinido — e qualquer
+// rota que leia um campo dele quebraria com erro 500. Garantimos um objeto.
+app.use((req, _res, next) => {
+  if (!req.body) req.body = {};
+  next();
+});
+
 // CSS e imagens ficam abertos; todo o resto exige sessão.
 app.use(express.static(path.join(__dirname, 'public')));
 

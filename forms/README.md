@@ -69,10 +69,32 @@ que a Luana deixou nos modelos:
 | Observação especial | Comentário da Luana: "Alcides pediu esse espaço" |
 | Áreas, fração ideal, vagas, preço por extenso | Campos que saíam em branco no contrato |
 
-## Pendências
+## Cadastrou um empreendimento novo?
 
-- **Empreendimentos são fixos no script** (`var EMPREENDIMENTOS`). Ao cadastrar
-  um empreendimento novo no sistema, acrescente ali e rode de novo.
+O menu suspenso do formulário **não se atualiza sozinho**. E rodar
+`criarFormularioContratual` de novo criaria outro formulário, com outra planilha,
+quebrando o n8n.
+
+Use `sincronizarEmpreendimentos()`, que atualiza o menu do formulário existente.
+
+**Configuração, uma vez só** — no editor do Apps Script, em
+*Configurações do projeto → Propriedades do script*:
+
+| Propriedade | Valor |
+|---|---|
+| `URL_APP` | endereço do sistema, sem barra no final |
+| `TOKEN_APP` | o mesmo `WEBHOOK_SECRET` do `.env` |
+| `URL_FORM` | a URL de edição do formulário |
+
+Depois é só executar a função sempre que cadastrar um empreendimento. Para
+esquecer do assunto, crie um acionador por tempo em *Acionadores*.
+
+A função lê `GET /webhook/empreendimentos` do sistema, que devolve os
+empreendimentos não concluídos. Se o sistema estiver fora do ar ou a lista vier
+vazia, ela **para sem tocar no formulário** — um menu vazio impediria qualquer
+pessoa de preencher.
+
+## Pendências
 - **Contrato de Permuta ficou de fora**: o modelo ainda não foi padronizado.
 - **Alienação e Fluxo direto** (modalidades pedidas na reunião) ficaram de fora:
   os modelos de contrato não existem ainda.

@@ -1,95 +1,214 @@
 <%- include("partials/header") %>
 
+<%
+  const real = (v) => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const cores = {
+    previsto: ['#fffbeb', '#92400e', '#fde68a'],
+    atrasado: ['#fef2f2', '#b91c1c', '#fecaca'],
+    recebido: ['#f0fdf4', '#166534', '#bbf7d0']
+  };
+%>
+
 <section class="page-header">
   <h2>Financeiro</h2>
-  <p>Resumo financeiro básico por empreendimento.</p>
+  <p>Recebimentos e despesas por empreendimento. Só o que foi confirmado entra no saldo.</p>
+</section>
+
+<% if (erro) { %>
+  <div class="empty-state" style="color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;margin-bottom:16px;">
+    <%= erro %>
+  </div>
+<% } %>
+
+<section class="cards">
+  <div class="card">
+    <h3>Recebido</h3>
+    <p class="big-number" style="color:#166534;"><%= real(totais.recebido) %></p>
+    <p style="margin:4px 0 0;color:#6b7280;font-size:13px;">Confirmado</p>
+  </div>
+
+  <div class="card">
+    <h3>A vencer</h3>
+    <p class="big-number" style="color:#b45309;"><%= real(totais.aVencer) %></p>
+    <p style="margin:4px 0 0;color:#6b7280;font-size:13px;">Ainda no prazo</p>
+  </div>
+
+  <div class="card">
+    <h3>Atrasado</h3>
+    <p class="big-number" style="color:<%= totais.atrasado > 0 ? '#b91c1c' : '#9ca3af' %>;"><%= real(totais.atrasado) %></p>
+    <p style="margin:4px 0 0;color:#6b7280;font-size:13px;">Venceu e não entrou</p>
+  </div>
+
+  <div class="card">
+    <h3>Saídas</h3>
+    <p class="big-number"><%= real(totais.saidas) %></p>
+  </div>
+
+  <div class="card">
+    <h3>Saldo</h3>
+    <p class="big-number"><%= real(totais.saldo) %></p>
+    <p style="margin:4px 0 0;color:#6b7280;font-size:13px;">Recebido menos saídas</p>
+  </div>
 </section>
 
 <section class="form-card">
   <form action="/financeiro" method="GET">
     <div class="form-grid">
       <div class="form-group">
-        <label for="empreendimento">Filtrar por empreendimento</label>
+        <label for="empreendimento">Empreendimento</label>
         <select name="empreendimento" id="empreendimento" onchange="this.form.submit()">
-          <option value="todos" <%= empreendimentoSelecionado === "todos" ? "selected" : "" %>>
-            Todos
-          </option>
-
-          <% empreendimentos.forEach(empreendimento => { %>
-            <option
-              value="<%= empreendimento.id %>"
-              <%= empreendimentoSelecionado === empreendimento.id ? "selected" : "" %>
-            >
-              <%= empreendimento.nome %>
-            </option>
+          <option value="todos" <%= empreendimentoSelecionado === "todos" ? "selected" : "" %>>Todos</option>
+          <% empreendimentos.forEach(e => { %>
+            <option value="<%= e.id %>" <%= empreendimentoSelecionado === e.id ? "selected" : "" %>><%= e.nome %></option>
           <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="situacao">Situação</label>
+        <select name="situacao" id="situacao" onchange="this.form.submit()">
+          <option value="todas" <%= situacaoSelecionada === 'todas' ? 'selected' : '' %>>Todas</option>
+          <option value="atrasado" <%= situacaoSelecionada === 'atrasado' ? 'selected' : '' %>>Atrasadas (<%= contagem.atrasado %>)</option>
+          <option value="previsto" <%= situacaoSelecionada === 'previsto' ? 'selected' : '' %>>A vencer (<%= contagem.previsto %>)</option>
+          <option value="recebido" <%= situacaoSelecionada === 'recebido' ? 'selected' : '' %>>Recebidas (<%= contagem.recebido %>)</option>
         </select>
       </div>
     </div>
   </form>
 </section>
 
-<section class="cards">
-  <div class="card">
-    <h3>Total de entradas</h3>
-    <p class="big-number">R$ <%= totalEntradas.toLocaleString("pt-BR") %></p>
+<div class="form-card" style="margin-bottom:24px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <h3 style="margin:0 0 4px;">Novo lançamento</h3>
+      <p style="margin:0;color:#6b7280;font-size:14px;">
+        Para o que não vem de contrato — despesas de obra, entradas avulsas.
+      </p>
+    </div>
+    <button class="button" id="btn-lancamento">Adicionar lançamento</button>
   </div>
 
-  <div class="card">
-    <h3>Total de saídas</h3>
-    <p class="big-number">R$ <%= totalSaidas.toLocaleString("pt-BR") %></p>
+  <div id="form-lancamento" style="display:none;margin-top:20px;border-top:1px solid #e5e7eb;padding-top:20px;">
+    <form action="/financeiro" method="POST">
+      <input type="hidden" name="empreendimento" value="<%= empreendimentoSelecionado %>" />
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="tipo">Tipo</label>
+          <select id="tipo" name="tipo" required>
+            <option value="entrada">Entrada</option>
+            <option value="saida">Saída</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="empreendimentoId">Empreendimento</label>
+          <select id="empreendimentoId" name="empreendimentoId">
+            <option value="">Não vinculado</option>
+            <% empreendimentos.forEach(e => { %>
+              <option value="<%= e.id %>" <%= empreendimentoSelecionado === e.id ? 'selected' : '' %>><%= e.nome %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="categoria">Categoria</label>
+          <input type="text" id="categoria" name="categoria" placeholder="Obra, Venda, Fornecedor..." />
+        </div>
+        <div class="form-group">
+          <label for="valor">Valor</label>
+          <input type="text" id="valor" name="valor" placeholder="10000,00" required />
+        </div>
+        <div class="form-group">
+          <label for="data">Data</label>
+          <input type="date" id="data" name="data" required />
+        </div>
+        <div class="form-group">
+          <label for="statusNovo">Situação</label>
+          <select id="statusNovo" name="status">
+            <option value="recebido">Já efetivado</option>
+            <option value="previsto">A vencer</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label for="observacao">Observação</label>
+          <input type="text" id="observacao" name="observacao" />
+        </div>
+      </div>
+      <div class="actions" style="margin-top:12px;">
+        <button type="submit" class="button">Salvar lançamento</button>
+        <button type="button" class="button secondary" id="btn-cancelar-lancamento">Fechar</button>
+      </div>
+    </form>
   </div>
-
-  <div class="card">
-    <h3>Saldo</h3>
-    <p class="big-number">R$ <%= saldo.toLocaleString("pt-BR") %></p>
-  </div>
-
-  <div class="card">
-    <h3>A receber</h3>
-    <p class="big-number" style="color: #b45309;">R$ <%= totalPrevisto.toLocaleString("pt-BR") %></p>
-    <p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;">Não entra no saldo</p>
-  </div>
-</section>
-
-<section class="page-header">
-  <h3>Lançamentos</h3>
-</section>
+</div>
 
 <% if (financeiro.length === 0) { %>
-  <div class="empty-state">
-    Nenhum lançamento encontrado para este filtro.
-  </div>
+  <div class="empty-state">Nenhum lançamento para este filtro.</div>
 <% } else { %>
   <table>
     <thead>
       <tr>
-        <th>Data</th>
+        <th>Vencimento</th>
         <th>Empreendimento</th>
         <th>Categoria</th>
         <th>Tipo</th>
         <th>Valor</th>
+        <th>Situação</th>
         <th>Observação</th>
+        <th>Ações</th>
       </tr>
     </thead>
     <tbody>
       <% financeiro.forEach(item => { %>
+        <% const [bg, fg, bd] = cores[item.situacao]; %>
         <tr>
-          <td><%= item.data %></td>
+          <td style="white-space:nowrap;"><%= item.data || '—' %></td>
           <td><%= item.empreendimentoNome %></td>
           <td><%= item.categoria %></td>
+          <td><%= item.tipoLabel %></td>
+          <td style="white-space:nowrap;"><%= real(item.valor) %></td>
           <td>
-            <%= item.tipoLabel %>
-            <% if (item.status === 'previsto') { %>
-              <span style="background:#fef3c7;color:#92400e;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:4px;">a receber</span>
+            <span style="background:<%= bg %>;color:<%= fg %>;border:1px solid <%= bd %>;font-size:12px;padding:3px 8px;border-radius:4px;white-space:nowrap;">
+              <%= item.situacaoLabel %>
+            </span>
+            <% if (item.situacao === 'recebido' && item.dataRecebimento) { %>
+              <div style="color:#6b7280;font-size:11px;margin-top:3px;">em <%= item.dataRecebimento %></div>
             <% } %>
           </td>
-          <td>R$ <%= item.valor.toLocaleString("pt-BR") %></td>
-          <td><%= item.observacao %></td>
+          <td style="font-size:13px;color:#6b7280;"><%= item.observacao || '' %></td>
+          <td style="white-space:nowrap;">
+            <% if (item.situacao === 'recebido') { %>
+              <form action="/financeiro/<%= item.id %>/desfazer" method="POST" class="inline-form">
+                <input type="hidden" name="empreendimento" value="<%= empreendimentoSelecionado %>" />
+                <button type="submit" class="button secondary" style="font-size:12px;padding:5px 10px;">Desfazer</button>
+              </form>
+            <% } else { %>
+              <form action="/financeiro/<%= item.id %>/receber" method="POST" class="inline-form">
+                <input type="hidden" name="empreendimento" value="<%= empreendimentoSelecionado %>" />
+                <button type="submit" class="button" style="font-size:12px;padding:5px 10px;">Confirmar</button>
+              </form>
+            <% } %>
+            <form action="/financeiro/<%= item.id %>/excluir" method="POST" class="inline-form"
+                  onsubmit="return confirm('Excluir este lançamento?');">
+              <input type="hidden" name="empreendimento" value="<%= empreendimentoSelecionado %>" />
+              <button type="submit" class="button danger" style="font-size:12px;padding:5px 10px;">Excluir</button>
+            </form>
+          </td>
         </tr>
       <% }) %>
     </tbody>
   </table>
 <% } %>
+
+<script>
+  document.getElementById("btn-lancamento").addEventListener("click", function () {
+    const bloco = document.getElementById("form-lancamento");
+    const aberto = bloco.style.display !== "none";
+    bloco.style.display = aberto ? "none" : "block";
+    this.textContent = aberto ? "Adicionar lançamento" : "Fechar";
+  });
+  document.getElementById("btn-cancelar-lancamento").addEventListener("click", function () {
+    document.getElementById("form-lancamento").style.display = "none";
+    document.getElementById("btn-lancamento").textContent = "Adicionar lançamento";
+  });
+</script>
 
 <%- include("partials/footer") %>

@@ -17,8 +17,9 @@
  *   aqui exige mudar lá.
  */
 
-// Precisa espelhar os empreendimentos cadastrados no sistema.
-// Ao cadastrar um empreendimento novo, acrescente aqui e rode de novo.
+// Lista inicial, usada só na criação do formulário.
+// Para manter o menu em dia depois, NÃO edite aqui e rode de novo — isso
+// criaria outro formulário. Use sincronizarEmpreendimentos(), no fim do arquivo.
 var EMPREENDIMENTOS = [
   'High Tower Jardins',
   'Reserva Verde'
@@ -353,4 +354,76 @@ function verificarTitulosDuplicados(urlEdicao) {
   } else {
     Logger.log('Nenhum titulo duplicado. Formulario ok.');
   }
+}
+
+
+// ============================================================================
+// SINCRONIZAR EMPREENDIMENTOS
+// ============================================================================
+//
+// Cadastrou um empreendimento novo no sistema? Rode esta função para o menu
+// suspenso do formulário passar a oferecê-lo. Ela ATUALIZA o formulário que já
+// existe — não cria outro, não mexe na planilha, não afeta o n8n.
+//
+// CONFIGURAÇÃO (uma vez só)
+//   No editor do Apps Script: Configurações do projeto → Propriedades do script
+//   Adicione:
+//     URL_APP    = https://seu-endereco-do-sistema   (sem barra no final)
+//     TOKEN_APP  = o mesmo valor de WEBHOOK_SECRET no .env
+//     URL_FORM   = a URL de edição do formulário
+//
+// Para não precisar lembrar de rodar, dá para criar um acionador por tempo:
+//   Acionadores → Adicionar acionador → sincronizarEmpreendimentos → Por tempo
+
+function sincronizarEmpreendimentos() {
+  var prop = PropertiesService.getScriptProperties();
+  var urlApp = prop.getProperty('URL_APP');
+  var token = prop.getProperty('TOKEN_APP');
+  var urlForm = prop.getProperty('URL_FORM');
+
+  if (!urlApp || !token || !urlForm) {
+    throw new Error('Configure URL_APP, TOKEN_APP e URL_FORM nas Propriedades do script.');
+  }
+
+  var resposta = UrlFetchApp.fetch(urlApp.replace(/\/$/, '') + '/webhook/empreendimentos', {
+    headers: { Authorization: 'Bearer ' + token },
+    muteHttpExceptions: true
+  });
+
+  if (resposta.getResponseCode() !== 200) {
+    throw new Error('O sistema respondeu ' + resposta.getResponseCode() +
+                    '. Verifique se está no ar e se o token confere. Nada foi alterado.');
+  }
+
+  var dados = JSON.parse(resposta.getContentText());
+  var nomes = (dados.empreendimentos || []).map(function (e) { return e.nome; });
+
+  // Sem nomes, sair sem tocar no formulário: um menu vazio quebraria o
+  // preenchimento para todo mundo.
+  if (!nomes.length) {
+    throw new Error('O sistema não devolveu nenhum empreendimento. Nada foi alterado.');
+  }
+
+  var form = FormApp.openByUrl(urlForm);
+  var pergunta = null;
+
+  form.getItems().forEach(function (item) {
+    if (item.getTitle().trim() === 'Empreendimento') pergunta = item;
+  });
+
+  if (!pergunta) {
+    throw new Error('Não achei a pergunta "Empreendimento" no formulário.');
+  }
+
+  var antes = pergunta.asListItem().getChoices().map(function (c) { return c.getValue(); });
+  pergunta.asListItem().setChoiceValues(nomes);
+
+  var novos = nomes.filter(function (n) { return antes.indexOf(n) === -1; });
+  var removidos = antes.filter(function (n) { return nomes.indexOf(n) === -1; });
+
+  Logger.log('Menu atualizado: ' + nomes.join(', '));
+  Logger.log('Acrescentados: ' + (novos.join(', ') || 'nenhum'));
+  Logger.log('Removidos    : ' + (removidos.join(', ') || 'nenhum'));
+
+  return { total: nomes.length, novos: novos, removidos: removidos };
 }

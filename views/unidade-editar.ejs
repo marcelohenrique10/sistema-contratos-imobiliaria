@@ -1,0 +1,56 @@
+<%- include("partials/header") %>
+
+<section class="page-header">
+  <h2>Editar unidade <%= unidade.numero %></h2>
+  <p><%= empreendimento ? empreendimento.nome : 'Empreendimento não encontrado' %></p>
+</section>
+
+<% if (erro) { %>
+  <div class="empty-state" style="color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;margin-bottom:16px;">
+    <%= erro %>
+  </div>
+<% } %>
+
+<section class="form-card">
+  <form action="/unidades/<%= unidade.id %>" method="POST">
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="numero">Número</label>
+        <input type="text" id="numero" name="numero" value="<%= unidade.numero %>" required />
+        <small>É por este número que o formulário encontra a unidade.</small>
+      </div>
+
+      <div class="form-group">
+        <label for="pavimento">Pavimento</label>
+        <input type="text" id="pavimento" name="pavimento" value="<%= unidade.pavimento || '' %>" />
+      </div>
+
+      <div class="form-group">
+        <label for="tipologia">Tipologia</label>
+        <input type="text" id="tipologia" name="tipologia" value="<%= unidade.tipologia || '' %>" />
+      </div>
+
+      <div class="form-group">
+        <label for="metragem">Metragem</label>
+        <input type="text" id="metragem" name="metragem" value="<%= unidade.metragem || '' %>" />
+      </div>
+
+      <div class="form-group">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          <% Object.entries(statusMap).forEach(([v, r]) => { %>
+            <option value="<%= v %>" <%= unidade.status === v ? 'selected' : '' %>><%= r %></option>
+          <% }) %>
+        </select>
+        <small>Voltar para “Livre” desfaz o vínculo com o cliente.</small>
+      </div>
+    </div>
+
+    <div class="actions" style="margin-top:16px;">
+      <button type="submit" class="button">Salvar alterações</button>
+      <a class="button secondary" href="/empreendimentos/<%= unidade.empreendimentoId %>">Cancelar</a>
+    </div>
+  </form>
+</section>
+
+<%- include("partials/footer") %>

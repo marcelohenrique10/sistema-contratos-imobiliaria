@@ -118,6 +118,11 @@ if (!colunasFinanceiro.includes('status')) {
 if (!colunasFinanceiro.includes('contratoId')) {
   db.exec('ALTER TABLE financeiro ADD COLUMN contratoId TEXT');
 }
+// Quando o recebimento foi confirmado. Guardar a data permite distinguir
+// "recebeu no prazo" de "recebeu atrasado" depois.
+if (!colunasFinanceiro.includes('dataRecebimento')) {
+  db.exec('ALTER TABLE financeiro ADD COLUMN dataRecebimento TEXT');
+}
 
 // Identificador da resposta do formulário (o carimbo de data/hora, único por
 // envio). Impede que reprocessar a mesma resposta crie contrato e documento
@@ -128,6 +133,15 @@ if (!colunasFinanceiro.includes('contratoId')) {
     db.exec(`ALTER TABLE ${tabela} ADD COLUMN respostaId TEXT`);
   }
 });
+
+// Distingue o que o sistema gerou do que alguém enviou de fora.
+const colunasDocumentos = db.prepare('PRAGMA table_info(documentos)').all().map((c) => c.name);
+if (!colunasDocumentos.includes('origem')) {
+  db.exec("ALTER TABLE documentos ADD COLUMN origem TEXT DEFAULT 'gerado'");
+}
+if (!colunasDocumentos.includes('nomeOriginal')) {
+  db.exec('ALTER TABLE documentos ADD COLUMN nomeOriginal TEXT');
+}
 
 // Seed empreendimentos
 if (db.prepare('SELECT COUNT(*) as n FROM empreendimentos').get().n === 0) {
