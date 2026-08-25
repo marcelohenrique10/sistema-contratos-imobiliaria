@@ -1,6 +1,7 @@
 <%- include("partials/header") %>
 
 <script type="application/json" id="unidades-data"><%- JSON.stringify(unidades).replace(/</g, '\\u003c') %></script>
+<script type="application/json" id="pendentes-data"><%- JSON.stringify(pendentesPorCliente).replace(/</g, '\\u003c') %></script>
 
 <section class="page-header">
   <h2>Enviar documento</h2>
@@ -138,6 +139,14 @@
     <!-- ---------------- DOCUMENTO ---------------- -->
     <h3 style="margin:28px 0 12px;border-top:1px solid #e5e7eb;padding-top:20px;">4. Documento</h3>
 
+    <div class="form-group" id="bloco-contrato" style="display:none;margin-bottom:16px;">
+      <label for="contratoId">Este arquivo atende algum documento que está aguardando?</label>
+      <select id="contratoId" name="contratoId">
+        <option value="">Não — é um documento avulso</option>
+      </select>
+      <small>Escolhendo um, ele deixa de aparecer como pendente em Contratos.</small>
+    </div>
+
     <div class="form-grid">
       <div class="form-group">
         <label for="tipo">Tipo do documento</label>
@@ -171,6 +180,43 @@
 
 <script>
   const TODAS_UNIDADES = JSON.parse(document.getElementById("unidades-data").textContent);
+  const PENDENTES = JSON.parse(document.getElementById("pendentes-data").textContent);
+  const CONTRATO_PRE = "<%= contratoPreSelecionado %>";
+
+  // Mostra os documentos que aquele cliente ainda deve
+  function atualizarPendentes() {
+    const modo = document.querySelector('input[name="clienteModo"]:checked').value;
+    const bloco = document.getElementById("bloco-contrato");
+    const select = document.getElementById("contratoId");
+
+    if (modo !== "existente") {
+      bloco.style.display = "none";   // cliente novo não tem contrato aguardando
+      select.value = "";
+      return;
+    }
+
+    const clienteId = document.getElementById("clienteId").value;
+    const doCliente = PENDENTES.filter(function (p) {
+      return String(p.clienteId) === String(clienteId);
+    });
+
+    select.innerHTML = '<option value="">Não — é um documento avulso</option>';
+    doCliente.forEach(function (p) {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.nome;
+      if (String(p.id) === CONTRATO_PRE) opt.selected = true;
+      select.appendChild(opt);
+    });
+
+    bloco.style.display = doCliente.length ? "block" : "none";
+  }
+
+  document.getElementById("clienteId").addEventListener("change", atualizarPendentes);
+  document.querySelectorAll('input[name="clienteModo"]').forEach(function (r) {
+    r.addEventListener("change", atualizarPendentes);
+  });
+  atualizarPendentes();
 
   function alternar(nome, mapa) {
     document.querySelectorAll('input[name="' + nome + '"]').forEach(function (radio) {

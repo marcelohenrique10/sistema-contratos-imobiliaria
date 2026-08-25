@@ -142,6 +142,11 @@ if (!colunasDocumentos.includes('origem')) {
 if (!colunasDocumentos.includes('nomeOriginal')) {
   db.exec('ALTER TABLE documentos ADD COLUMN nomeOriginal TEXT');
 }
+// Qual contrato este arquivo satisfaz. Sem isso, a tela de Contratos não tem
+// como mostrar o documento de cada item da operação.
+if (!colunasDocumentos.includes('contratoId')) {
+  db.exec('ALTER TABLE documentos ADD COLUMN contratoId TEXT');
+}
 
 // Seed empreendimentos
 if (db.prepare('SELECT COUNT(*) as n FROM empreendimentos').get().n === 0) {

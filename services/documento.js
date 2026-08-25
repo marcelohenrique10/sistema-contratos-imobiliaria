@@ -135,7 +135,9 @@ function montarValores(documento, empreendimento, extras = {}) {
     SCP_VALOR_ENTRADA: scp.valorEntrada,
 
     TESTEMUNHA_1_NOME: testemunhas[0] ? testemunhas[0].nome : '',
-    TESTEMUNHA_2_NOME: testemunhas[1] ? testemunhas[1].nome : ''
+    TESTEMUNHA_1_CPF: testemunhas[0] ? testemunhas[0].cpf : '',
+    TESTEMUNHA_2_NOME: testemunhas[1] ? testemunhas[1].nome : '',
+    TESTEMUNHA_2_CPF: testemunhas[1] ? testemunhas[1].cpf : ''
   };
 }
 

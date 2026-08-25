@@ -78,7 +78,8 @@ jurídica). Onde fala do empreendimento como obra, use `NOME`.
 | `[DOC_DIA]` / `[DOC_MES]` / `[DOC_ANO]` | Data quebrada (usado só no SCP) |
 | `[DATA_COMPROMISSO_COMPRA_VENDA]` | Data do compromisso (termo de empréstimo) |
 | `[SCP_VALOR_ENTRADA]` | Valor da entrada (SCP) |
-| `[TESTEMUNHA_1_NOME]` / `[TESTEMUNHA_2_NOME]` | Testemunhas 1 e 2 |
+| `[TESTEMUNHA_1_NOME]` / `[TESTEMUNHA_2_NOME]` | Nome das testemunhas 1 e 2 |
+| `[TESTEMUNHA_1_CPF]` / `[TESTEMUNHA_2_CPF]` | CPF das testemunhas 1 e 2 |
 
 ## Modelos disponíveis
 
@@ -118,4 +119,16 @@ jurídico** — não são decisões de código:
 - No contrato de compra e venda, o campo rotulado `CPF:` usava o placeholder
   `[CNPJ]` por engano do documento original. Mapeado para `[COMPRADOR_CPF]`.
   **Confirmar com o jurídico.**
-- CPF das testemunhas segue como `XXXXXXX` fixo, preenchido à mão (decisão do projeto).
+- **Dois valores do contrato de compra e venda seguem como `XXXXXXX`**, porque
+  não vêm do comprador e sim do memorial de incorporação — são por unidade:
+  - cláusula **1.4**: valor pago pela *fração ideal do terreno*;
+  - cláusula **3.2**: *custo de construção* estimado da unidade.
+
+  Para o sistema preencher, esses dois precisam virar campos do cadastro da
+  unidade. Enquanto isso, ficam para preenchimento à mão.
+- Ainda no contrato de compra e venda, a cláusula 3.2 traz duas informações
+  fixas do High Tower: a data-base do orçamento (`13/06/2022`) e o padrão de
+  obra (`101`). Gerar contrato de outro empreendimento sai com esses valores.
+- Os blocos de assinatura trazem só o **nome** do comprador e do cônjuge, sem
+  linha de CPF — as testemunhas têm. Se o jurídico quiser CPF ali também,
+  é alteração no modelo (há 15 blocos de rubrica no documento).

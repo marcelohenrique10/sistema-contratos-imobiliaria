@@ -148,16 +148,35 @@ function resolverVinculos(corpo) {
   };
 }
 
-function registrar({ vinculos, tipo, arquivo, observacao }) {
+/**
+ * Contratos deste cliente que ainda esperam documento. O upload pode
+ * satisfazer um deles, do mesmo jeito que a resposta do formulário faz.
+ */
+function contratosPendentes(clienteId) {
+  return db.prepare(`
+    SELECT id, nome, categoria, status
+    FROM contratos
+    WHERE clienteId = ? AND status IN ('pendente', 'em_preenchimento')
+    ORDER BY created_at
+  `).all(parseInt(clienteId));
+}
+
+function registrar({ vinculos, tipo, arquivo, contratoId }) {
   const caminhoPublico = '/storage/' + path
     .relative(path.join(__dirname, '..', 'storage'), arquivo.path)
     .replace(/\\/g, '/');
 
   const cliente = db.prepare('SELECT nome FROM clientes WHERE id = ?').get(vinculos.clienteId);
 
+  // Só aceita contrato que seja mesmo deste cliente
+  const contrato = contratoId
+    ? db.prepare('SELECT id FROM contratos WHERE id = ? AND clienteId = ?')
+        .get([String(contratoId), vinculos.clienteId])
+    : null;
+
   const r = db.prepare(`
-    INSERT INTO documentos (tipo, nome, empreendimentoId, unidadeId, clienteId, caminho, data, origem, nomeOriginal)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'enviado', ?)
+    INSERT INTO documentos (tipo, nome, empreendimentoId, unidadeId, clienteId, caminho, data, origem, nomeOriginal, contratoId)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'enviado', ?, ?)
   `).run([
     tipo,
     `${tipo} - ${cliente ? cliente.nome : 'sem cliente'}`,
@@ -166,10 +185,19 @@ function registrar({ vinculos, tipo, arquivo, observacao }) {
     vinculos.clienteId,
     caminhoPublico,
     new Date().toISOString().slice(0, 10),
-    arquivo.originalname
+    arquivo.originalname,
+    contrato ? contrato.id : null
   ]);
 
-  return { id: Number(r.lastInsertRowid), caminhoPublico };
+  // O contrato deixa de esperar: o documento chegou, só que de fora.
+  if (contrato) {
+    db.prepare("UPDATE contratos SET status = 'anexado' WHERE id = ?").run(contrato.id);
+  }
+
+  return { id: Number(r.lastInsertRowid), caminhoPublico, contratoAtendido: Boolean(contrato) };
 }
 
-module.exports = { receber, resolverVinculos, registrar, TIPOS_DOCUMENTO, EXTENSOES, TAMANHO_MAXIMO, apelidar };
+module.exports = {
+  receber, resolverVinculos, registrar, contratosPendentes,
+  TIPOS_DOCUMENTO, EXTENSOES, TAMANHO_MAXIMO, apelidar
+};

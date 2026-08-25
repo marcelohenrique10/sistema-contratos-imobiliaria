@@ -16,15 +16,20 @@ function situacao(lancamento) {
   return lancamento.data < hoje() ? 'atrasado' : 'previsto';
 }
 
+// Dinheiro que entra é recebido; dinheiro que sai é pago. Guardamos um
+// status só ('recebido'), mas quem lê a tela precisa da palavra certa.
 const ROTULOS = {
-  previsto: 'A vencer',
-  atrasado: 'Atrasado',
-  recebido: 'Recebido'
+  entrada: { previsto: 'A vencer', atrasado: 'Atrasado', recebido: 'Recebido' },
+  saida:   { previsto: 'A pagar',  atrasado: 'Atrasado', recebido: 'Pago' }
 };
+
+function rotulo(sit, tipo) {
+  return (ROTULOS[tipo] || ROTULOS.entrada)[sit];
+}
 
 function enriquecer(lancamento) {
   const sit = situacao(lancamento);
-  return { ...lancamento, situacao: sit, situacaoLabel: ROTULOS[sit] };
+  return { ...lancamento, situacao: sit, situacaoLabel: rotulo(sit, lancamento.tipo) };
 }
 
 /** Confirma que o dinheiro entrou. Só o sistema não sabe disso sozinho. */
@@ -96,6 +101,6 @@ function totais(lancamentos) {
 }
 
 module.exports = {
-  enriquecer, situacao, confirmarRecebimento, desfazerRecebimento,
+  enriquecer, situacao, rotulo, confirmarRecebimento, desfazerRecebimento,
   criar, atualizar, excluir, totais, CATEGORIAS_SAIDA, hoje
 };

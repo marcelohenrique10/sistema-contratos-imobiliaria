@@ -436,6 +436,13 @@ function dadosDoFormularioDeEnvio(req) {
     extensoes: upload.EXTENSOES,
     tamanhoMaximoMb: Math.round(upload.TAMANHO_MAXIMO / (1024 * 1024)),
     clientePreSelecionado: req.query.cliente || '',
+    contratoPreSelecionado: req.query.contrato || '',
+    // Contratos aguardando documento, por cliente — o upload pode satisfazê-los
+    pendentesPorCliente: db.prepare(`
+      SELECT id, nome, clienteId FROM contratos
+      WHERE status IN ('pendente', 'em_preenchimento')
+      ORDER BY created_at
+    `).all(),
     erro: req.query.erro || null
   };
 }
@@ -461,9 +468,15 @@ router.post('/documentos/enviar', (req, res) => {
       if (!req.body.tipo) throw new Error('Escolha o tipo do documento.');
 
       const vinculos = upload.resolverVinculos(req.body);
-      upload.registrar({ vinculos, tipo: req.body.tipo, arquivo: req.file });
+      const r = upload.registrar({
+        vinculos,
+        tipo: req.body.tipo,
+        arquivo: req.file,
+        contratoId: req.body.contratoId
+      });
 
-      res.redirect('/documentos?enviado=1');
+      // Se atendeu um contrato que estava aguardando, leva de volta para lá
+      res.redirect(r.contratoAtendido ? '/contratos?anexado=1' : '/documentos?enviado=1');
     } catch (err) {
       // Falhou depois de gravar o arquivo: remove para não deixar órfão
       try { fs.unlinkSync(req.file.path); } catch (_) {}
@@ -482,12 +495,43 @@ router.get('/contratos', (req, res) => {
   const clientes = db.prepare('SELECT * FROM clientes').all();
   const unidades = db.prepare('SELECT * FROM unidades').all();
 
-  const statusMap = {
-    disponivel: 'Disponível',
-    em_preenchimento: 'Em preenchimento',
-    gerado: 'Gerado',
-    pendente: 'Pendente'
+  // Cada situação diz o que está acontecendo e qual é o próximo passo.
+  const situacoes = {
+    pendente: {
+      rotulo: 'Aguardando',
+      explica: 'Esperando o formulário ser preenchido, ou o documento assinado ser enviado.',
+      cor: 'amarelo'
+    },
+    em_preenchimento: {
+      rotulo: 'Em preenchimento',
+      explica: 'O formulário chegou e o documento está sendo montado.',
+      cor: 'azul'
+    },
+    gerado: {
+      rotulo: 'Gerado',
+      explica: 'Documento pronto, criado pelo sistema.',
+      cor: 'verde'
+    },
+    anexado: {
+      rotulo: 'Anexado',
+      explica: 'Documento enviado pela equipe, não gerado pelo sistema.',
+      cor: 'verde'
+    },
+    disponivel: { rotulo: 'Disponível', explica: '', cor: 'cinza' }
   };
+
+  // Documentos de verdade, para a operação parar de mentir sobre o que mostra
+  const documentosPorContrato = {};
+  db.prepare(`
+    SELECT id, contratoId, caminho, origem, nome, data
+    FROM documentos WHERE contratoId IS NOT NULL
+  `).all().forEach((d) => {
+    const relativo = String(d.caminho || '').replace(/^\/storage\//, '');
+    documentosPorContrato[d.contratoId] = {
+      ...d,
+      disponivel: Boolean(relativo) && fs.existsSync(path.join(__dirname, '..', 'storage', relativo))
+    };
+  });
 
   const contratosEnriquecidos = db.prepare(`
     SELECT ct.*,
@@ -498,10 +542,16 @@ router.get('/contratos', (req, res) => {
     LEFT JOIN clientes cl ON ct.clienteId = cl.id
     LEFT JOIN empreendimentos e ON ct.empreendimentoId = e.id
     LEFT JOIN unidades u ON ct.unidadeId = u.id
-  `).all().map((c) => ({
-    ...c,
-    statusLabel: statusMap[c.status] || c.status
-  }));
+  `).all().map((c) => {
+    const s = situacoes[c.status] || { rotulo: c.status, explica: '', cor: 'cinza' };
+    return {
+      ...c,
+      statusLabel: s.rotulo,
+      statusExplica: s.explica,
+      statusCor: s.cor,
+      documento: documentosPorContrato[c.id] || null
+    };
+  });
 
   const operacoesMap = {};
   contratosEnriquecidos.forEach((c) => {
@@ -509,6 +559,7 @@ router.get('/contratos', (req, res) => {
     if (!operacoesMap[key]) {
       operacoesMap[key] = {
         operacaoId: key,
+        clienteId: c.clienteId,
         clienteNome: c.clienteNome,
         unidadeNumero: c.unidadeNumero,
         empreendimentoNome: c.empreendimentoNome,
@@ -520,12 +571,26 @@ router.get('/contratos', (req, res) => {
     operacoesMap[key].contratos.push(c);
   });
 
-  const operacoes = Object.values(operacoesMap).map((op) => ({
-    ...op,
-    statusGeral: op.contratos.every((c) => c.status === 'gerado') ? 'Concluído' : 'Em andamento'
-  }));
+  const prontos = (c) => ['gerado', 'anexado'].includes(c.status);
 
-  res.render('contratos', { operacoes, clientes, empreendimentos, unidades });
+  const operacoes = Object.values(operacoesMap).map((op) => {
+    const concluidos = op.contratos.filter(prontos).length;
+    const aguardando = op.contratos.filter((c) => c.status === 'pendente').length;
+
+    return {
+      ...op,
+      concluidos,
+      total: op.contratos.length,
+      aguardando,
+      statusGeral: concluidos === op.contratos.length ? 'Concluído' : 'Em andamento'
+    };
+  });
+
+  res.render('contratos', {
+    operacoes, clientes, empreendimentos, unidades,
+    anexado: Boolean(req.query.anexado),
+    formLink: 'https://docs.google.com/forms/d/e/1FAIpQLSeqABI1z4kCqJUjv9gK3hc45BldUVBJcCjNiT13FyY2tF_V5Q/viewform'
+  });
 });
 
 router.post('/contratos/iniciar', (req, res) => {

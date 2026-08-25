@@ -236,7 +236,7 @@ router.post('/documento', checkAuth, async (req, res) => {
     const unidadeId = resolverUnidadeId({ unidadeId: req.body.unidadeId, unidadeNumero, empreendimentoId });
 
     const insercao = db.prepare(
-      'INSERT INTO documentos (tipo, nome, empreendimentoId, unidadeId, clienteId, caminho, data, respostaId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO documentos (tipo, nome, empreendimentoId, unidadeId, clienteId, caminho, data, respostaId, contratoId, origem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     ).run([
       normalizarTipoDocumento(documento.tipo),
       `${normalizarTipoDocumento(documento.tipo)} - ${(documento.comprador || {}).nome || 'sem nome'}`,
@@ -245,7 +245,9 @@ router.post('/documento', checkAuth, async (req, res) => {
       clienteId ? parseInt(clienteId) : null,
       resultado.caminhoPublico,
       new Date().toISOString().slice(0, 10),
-      respostaId || null
+      respostaId || null,
+      contratoId || null,
+      'gerado'
     ]);
 
     if (contratoId) {
