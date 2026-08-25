@@ -133,6 +133,22 @@ Se `contratoId` for informado, o contrato correspondente passa para "gerado".
 Tipos sem modelo cadastrado (hoje, o Contrato de Permuta) devolvem erro
 explicando qual tipo faltou, em vez de gerar arquivo errado.
 
+### Idempotência — `respostaId`
+
+`/webhook/contrato` e `/webhook/documento` aceitam `respostaId`, que é o
+**carimbo de data/hora** da resposta do formulário (único por envio).
+
+Sem ele, reexecutar o mesmo workflow cria contrato, documento e cronograma de
+recebíveis duplicados — o financeiro infla silenciosamente. Isso aconteceu de
+verdade num teste: três execuções seguidas geraram R$ 1.449.000 em vez dos
+R$ 483.000 corretos.
+
+Com `respostaId`, a segunda chamada devolve o registro existente e
+`jaProcessado: true`. O cliente já era protegido antes, pelo CPF/CNPJ.
+
+**Não remova esse campo dos nós HTTP.** O n8n reexecuta por falha de rede, e
+alguém pode clicar "Execute workflow" duas vezes.
+
 ### Outros
 
 - `POST /webhook/financeiro` — lançamento de entrada/saída

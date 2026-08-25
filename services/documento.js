@@ -24,6 +24,21 @@ function juntar(...partes) {
   return partes.filter((p) => p && String(p).trim()).join(', ');
 }
 
+// O formulário aceita "733.000,00" ou "R$ 733.000,00"; o contrato precisa
+// sempre do prefixo.
+function comReal(valor) {
+  const texto = String(valor ?? '').trim();
+  if (!texto) return '';
+  return /^r\$/i.test(texto) ? texto : `R$ ${texto}`;
+}
+
+// "Parcelado" / "À vista" -> como a frase do contrato pede: "de forma ..."
+function textoFormaAquisicao(forma) {
+  const texto = String(forma ?? '').trim().toLowerCase();
+  if (!texto) return 'parcelada';
+  return texto.includes('vista') ? 'à vista' : 'parcelada';
+}
+
 // Aceita dd/mm/aaaa e aaaa-mm-dd, que são os dois formatos que o Google Forms
 // devolve dependendo de como a pergunta foi configurada.
 function parsearData(valor) {
@@ -90,8 +105,21 @@ function montarValores(documento, empreendimento, extras = {}) {
     EMPREENDIMENTO_RAZAO_SOCIAL: emp.razaoSocial || scp.razaoSocial,
     EMPREENDIMENTO_CNPJ: emp.cnpj || scp.cnpj,
     EMPREENDIMENTO_ENDERECO: emp.endereco,
+    EMPREENDIMENTO_CEP: emp.cep,
     EMPREENDIMENTO_SOCIO_ADMIN: emp.socioAdmin,
     EMPREENDIMENTO_EMAIL: emp.email,
+
+    UNIDADE_NUMERO_EXTENSO: unidade.numeroExtenso || anexo.numeroUnidadeExtenso,
+    UNIDADE_VAGAS: unidade.vagasGaragem,
+    UNIDADE_NUMEROS_VAGAS: unidade.numerosVagas,
+    UNIDADE_AREA_PRIVATIVA: unidade.areaPrivativa,
+    UNIDADE_AREA_CONSTRUCAO: unidade.areaConstrucao,
+    UNIDADE_FRACAO_IDEAL: unidade.fracaoIdeal,
+    UNIDADE_DESCRICAO_PLANTA: unidade.descricaoPlanta,
+
+    PRECO_TOTAL: comReal(compraVenda.precoTotal),
+    PRECO_TOTAL_EXTENSO: compraVenda.precoExtenso,
+    FORMA_AQUISICAO: textoFormaAquisicao(compraVenda.formaAquisicao),
 
     // Nem todo tipo de documento traz bloco de unidade (o Termo de Anuência,
     // por exemplo), mas o número sempre chega junto do payload.
@@ -129,7 +157,12 @@ function textoReajuste(parcela) {
  */
 function montarTabelaParcelas(xml, compraVenda) {
   const parcelas = (compraVenda.parcelas || []).filter((p) => p.tipo);
-  if (!parcelas.length) return xml;
+
+  // Compra à vista não tem parcelas, mas a tabela do modelo precisa ser
+  // substituída mesmo assim — senão o contrato sai com o exemplo do modelo.
+  const aVista = compraVenda.aVista || (!parcelas.length && compraVenda.precoTotal);
+
+  if (!parcelas.length && !aVista) return xml;
 
   const tabela = xml.match(/<w:tbl>[\s\S]*?<\/w:tbl>/);
   if (!tabela) return xml;
@@ -144,6 +177,22 @@ function montarTabelaParcelas(xml, compraVenda) {
   const moldeTotal = linhas[linhas.length - 1];
 
   const novas = [moldeCabecalho];
+
+  if (!parcelas.length) {
+    novas.push(docx.definirTextosLinha(moldeSimples, [
+      'À vista',
+      compraVenda.dataPagamento || '',
+      compraVenda.precoTotal || '',
+      '01',
+      '100%',
+      'Não',
+      compraVenda.formaPagamentoAVista || ''
+    ]));
+    novas.push(docx.definirTextosLinha(moldeTotal, [
+      'Total', null, compraVenda.precoTotal || '', null, '100%', null, null
+    ]));
+    return docx.substituirLinhasDaPrimeiraTabela(xml, novas);
+  }
 
   parcelas.forEach((parcela) => {
     const quantidade = parseInt(String(parcela.quantidade || '1').replace(/\D/g, ''), 10) || 1;

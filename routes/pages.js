@@ -67,22 +67,23 @@ router.get('/', (req, res) => {
   const totalEmpreendimentos = db.prepare('SELECT COUNT(*) as n FROM empreendimentos').get().n;
   const totalClientes = db.prepare('SELECT COUNT(*) as n FROM clientes').get().n;
   const totalContratos = db.prepare('SELECT COUNT(*) as n FROM contratos').get().n;
-  const financeiro = db.prepare('SELECT tipo, valor FROM financeiro').all();
+  const financeiro = db.prepare('SELECT tipo, valor, status FROM financeiro').all();
 
-  const totalEntradas = financeiro
-    .filter(f => f.tipo === 'entrada')
-    .reduce((acc, f) => acc + f.valor, 0);
+  const somar = (filtro) => financeiro.filter(filtro).reduce((acc, f) => acc + f.valor, 0);
+  const previsto = (f) => f.status === 'previsto';
 
-  const totalSaidas = financeiro
-    .filter(f => f.tipo === 'saida')
-    .reduce((acc, f) => acc + f.valor, 0);
+  // "Entradas" é o que já entrou; o previsto vem das parcelas ainda a vencer.
+  const totalEntradas = somar((f) => f.tipo === 'entrada' && !previsto(f));
+  const totalSaidas = somar((f) => f.tipo === 'saida' && !previsto(f));
+  const totalPrevisto = somar((f) => f.tipo === 'entrada' && previsto(f));
 
   res.render('index', {
     totalEmpreendimentos,
     totalClientes,
     totalContratos,
     totalEntradas,
-    totalSaidas
+    totalSaidas,
+    totalPrevisto
   });
 });
 
@@ -107,7 +108,7 @@ router.get('/empreendimentos', (req, res) => {
 router.post('/empreendimentos', (req, res) => {
   const {
     nome, endereco, status, descricao, memorialLink, plantaLink, tabelaVendaLink,
-    razaoSocial, cnpj, socioAdmin, email
+    razaoSocial, cnpj, socioAdmin, email, cep
   } = req.body;
 
   const id = nome
@@ -117,11 +118,11 @@ router.post('/empreendimentos', (req, res) => {
     .replace(/\s+/g, '-');
 
   db.prepare(
-    'INSERT INTO empreendimentos (id, nome, endereco, status, descricao, memorialLink, plantaLink, tabelaVendaLink, razaoSocial, cnpj, socioAdmin, email) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO empreendimentos (id, nome, endereco, status, descricao, memorialLink, plantaLink, tabelaVendaLink, razaoSocial, cnpj, socioAdmin, email, cep) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).run([
     id, nome, endereco, status, descricao,
     memorialLink || '#', plantaLink || '#', tabelaVendaLink || '#',
-    razaoSocial || null, cnpj || null, socioAdmin || null, email || null
+    razaoSocial || null, cnpj || null, socioAdmin || null, email || null, cep || null
   ]);
 
   criarEstruturaDocumentos(id);
@@ -193,7 +194,34 @@ router.get('/clientes', (req, res) => {
     LEFT JOIN unidades u ON cl.unidadeId = u.id
   `).all();
 
-  res.render('clientes', { clientes });
+  res.render('clientes', { clientes, erro: req.query.erro || null });
+});
+
+// Cadastro manual: a outra porta de entrada de cliente, além do formulário.
+// O CPF/CNPJ é a chave que liga esse cadastro à resposta do formulário depois.
+router.post('/clientes', (req, res) => {
+  const { nome, cpfCnpj, telefone, email, tipo, observacoes } = req.body;
+
+  if (!(nome || '').trim()) {
+    return res.redirect(`/clientes?erro=${encodeURIComponent('Informe o nome do cliente.')}`);
+  }
+
+  const documento = (cpfCnpj || '').trim();
+  const jaExiste = documento
+    ? db.prepare('SELECT nome FROM clientes WHERE cpfCnpj = ?').get(documento)
+    : null;
+
+  if (jaExiste) {
+    return res.redirect(
+      `/clientes?erro=${encodeURIComponent(`Já existe um cliente com esse CPF/CNPJ: ${jaExiste.nome}`)}`
+    );
+  }
+
+  db.prepare(
+    'INSERT INTO clientes (nome, cpfCnpj, telefone, email, tipo, observacoes) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run([nome, documento || null, telefone || null, email || null, tipo || 'Comprador', observacoes || null]);
+
+  res.redirect('/clientes');
 });
 
 router.get('/contratos', (req, res) => {
@@ -323,13 +351,12 @@ router.get('/financeiro', (req, res) => {
     tipoLabel: financeiroTipoMap[item.tipo] || item.tipo
   }));
 
-  const totalEntradas = financeiroComRelacionamento
-    .filter((item) => item.tipo === 'entrada')
-    .reduce((acc, item) => acc + item.valor, 0);
+  const somar = (filtro) => financeiroComRelacionamento.filter(filtro).reduce((acc, i) => acc + i.valor, 0);
+  const previsto = (i) => i.status === 'previsto';
 
-  const totalSaidas = financeiroComRelacionamento
-    .filter((item) => item.tipo === 'saida')
-    .reduce((acc, item) => acc + item.valor, 0);
+  const totalEntradas = somar((i) => i.tipo === 'entrada' && !previsto(i));
+  const totalSaidas = somar((i) => i.tipo === 'saida' && !previsto(i));
+  const totalPrevisto = somar((i) => i.tipo === 'entrada' && previsto(i));
 
   const saldo = totalEntradas - totalSaidas;
 
@@ -339,6 +366,7 @@ router.get('/financeiro', (req, res) => {
     empreendimentoSelecionado: empreendimentoId,
     totalEntradas,
     totalSaidas,
+    totalPrevisto,
     saldo
   });
 });

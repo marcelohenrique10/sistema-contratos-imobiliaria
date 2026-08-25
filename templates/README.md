@@ -42,19 +42,38 @@ contratos como VENDEDORA. Cadastrados na tela de Empreendimentos.
 
 | Placeholder | Coluna em `empreendimentos` |
 |---|---|
-| `[EMPREENDIMENTO_NOME]` | `nome` |
-| `[EMPREENDIMENTO_RAZAO_SOCIAL]` | `razaoSocial` |
+| `[EMPREENDIMENTO_NOME]` | `nome` — nome comercial ("High Tower Jardins") |
+| `[EMPREENDIMENTO_RAZAO_SOCIAL]` | `razaoSocial` — a SPE, que assina como VENDEDORA |
 | `[EMPREENDIMENTO_CNPJ]` | `cnpj` |
 | `[EMPREENDIMENTO_ENDERECO]` | `endereco` |
+| `[EMPREENDIMENTO_CEP]` | `cep` |
 | `[EMPREENDIMENTO_SOCIO_ADMIN]` | `socioAdmin` |
 | `[EMPREENDIMENTO_EMAIL]` | `email` |
 
-### Unidade, documento e testemunhas
+Onde o contrato fala da parte contratante, use `RAZAO_SOCIAL` (é a pessoa
+jurídica). Onde fala do empreendimento como obra, use `NOME`.
+
+### Unidade
+
+| Placeholder | Campo no formulário |
+|---|---|
+| `[UNIDADE_NUMERO]` | Número da unidade |
+| `[UNIDADE_NUMERO_EXTENSO]` | Número da unidade por extenso |
+| `[UNIDADE_TIPO]` | Tipo da unidade |
+| `[UNIDADE_VAGAS]` | Quantidade de vagas de garagem |
+| `[UNIDADE_NUMEROS_VAGAS]` | Números das vagas |
+| `[UNIDADE_AREA_PRIVATIVA]` | Área privativa (m²) |
+| `[UNIDADE_AREA_CONSTRUCAO]` | Área de construção (m²) |
+| `[UNIDADE_FRACAO_IDEAL]` | Fração ideal |
+| `[UNIDADE_DESCRICAO_PLANTA]` | Descrição da planta |
+
+### Preço, documento e testemunhas
 
 | Placeholder | Origem |
 |---|---|
-| `[UNIDADE_NUMERO]` | Número da unidade (formulário) |
-| `[UNIDADE_TIPO]` | Tipo da unidade (formulário) |
+| `[PRECO_TOTAL]` | Preço total do imóvel — o "R$ " é acrescentado se faltar |
+| `[PRECO_TOTAL_EXTENSO]` | Preço total por extenso |
+| `[FORMA_AQUISICAO]` | Vira "parcelada" ou "à vista" para caber na frase |
 | `[DOC_DATA]` | Data do documento |
 | `[DOC_DIA]` / `[DOC_MES]` / `[DOC_ANO]` | Data quebrada (usado só no SCP) |
 | `[DATA_COMPROMISSO_COMPRA_VENDA]` | Data do compromisso (termo de empréstimo) |
@@ -70,6 +89,21 @@ contratos como VENDEDORA. Cadastrados na tela de Empreendimentos.
 | `termo-anuencia-outorga-poderes.docx` | Termo de Anuência com Outorga de Poderes |
 | `termo-ciencia-anuencia-emprestimo.docx` | Termo de Ciência e Anuência para Empréstimo |
 | `termo-adesao-preliminar-scp.docx` | Termo de Adesão Preliminar SCP |
+
+## Divergências encontradas nos modelos originais
+
+Estas vieram dos arquivos que o cliente enviou e **precisam de validação do
+jurídico** — não são decisões de código:
+
+- **Três CNPJs para o mesmo empreendimento**: `46.625.994/0001-32` (anuência e
+  compra e venda) e `62.255.242/0001-83` (empréstimo, ainda fixo no texto).
+- **Dois endereços**: `Rua Flor do Guarujá, nº 47` (compra e venda) e
+  `Rua Flor de Noiva, nº 47` (anuência).
+- **Contaminação entre empreendimentos**: o contrato do High Tower trazia
+  `EDIFÍCIO FLOR DO GUARUJÁ` e a conta bancária em nome da Flor do Guarujá com
+  o CNPJ do High Tower. Os nomes viraram placeholder, o que resolve; os dados
+  bancários (banco, agência, conta) seguem fixos por decisão do projeto —
+  então gerar contrato de outro empreendimento sai com a conta do High Tower.
 
 ## Pendências conhecidas
 

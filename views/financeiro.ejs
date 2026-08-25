@@ -44,6 +44,12 @@
     <h3>Saldo</h3>
     <p class="big-number">R$ <%= saldo.toLocaleString("pt-BR") %></p>
   </div>
+
+  <div class="card">
+    <h3>A receber</h3>
+    <p class="big-number" style="color: #b45309;">R$ <%= totalPrevisto.toLocaleString("pt-BR") %></p>
+    <p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;">Não entra no saldo</p>
+  </div>
 </section>
 
 <section class="page-header">
@@ -72,7 +78,12 @@
           <td><%= item.data %></td>
           <td><%= item.empreendimentoNome %></td>
           <td><%= item.categoria %></td>
-          <td><%= item.tipoLabel %></td>
+          <td>
+            <%= item.tipoLabel %>
+            <% if (item.status === 'previsto') { %>
+              <span style="background:#fef3c7;color:#92400e;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:4px;">a receber</span>
+            <% } %>
+          </td>
           <td>R$ <%= item.valor.toLocaleString("pt-BR") %></td>
           <td><%= item.observacao %></td>
         </tr>

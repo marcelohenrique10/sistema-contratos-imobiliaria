@@ -1,5 +1,5 @@
 {
-  "name": "formulario-contratual-de-marchi",
+  "name": "TESTE NGROK - formulario contratual de marchi",
   "nodes": [
     {
       "parameters": {
@@ -56,13 +56,13 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.APP_BASE_URL }}/webhook/cliente",
+        "url": "https://upstate-iodine-doable.ngrok-free.dev/webhook/cliente",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "Authorization",
-              "value": "=Bearer {{ $vars.APP_WEBHOOK_SECRET }}"
+              "value": "Bearer dev-local-secret-troque-em-producao"
             }
           ]
         },
@@ -117,13 +117,13 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.APP_BASE_URL }}/webhook/contrato",
+        "url": "https://upstate-iodine-doable.ngrok-free.dev/webhook/contrato",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "Authorization",
-              "value": "=Bearer {{ $vars.APP_WEBHOOK_SECRET }}"
+              "value": "Bearer dev-local-secret-troque-em-producao"
             }
           ]
         },
@@ -193,13 +193,13 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $vars.APP_BASE_URL }}/webhook/documento",
+        "url": "https://upstate-iodine-doable.ngrok-free.dev/webhook/documento",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "Authorization",
-              "value": "=Bearer {{ $vars.APP_WEBHOOK_SECRET }}"
+              "value": "Bearer dev-local-secret-troque-em-producao"
             }
           ]
         },

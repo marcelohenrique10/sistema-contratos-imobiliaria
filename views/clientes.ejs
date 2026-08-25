@@ -5,6 +5,69 @@
   <p>Clientes vinculados aos empreendimentos e unidades.</p>
 </section>
 
+<div class="form-card" style="margin-bottom: 32px;">
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h3 style="margin: 0 0 4px;">Novo cliente</h3>
+      <p style="margin: 0; color: #6b7280; font-size: 14px;">
+        Cadastro inicial. Os dados completos para o contrato vêm depois, pelo formulário.
+      </p>
+    </div>
+    <button class="button" id="btn-toggle-cliente">Cadastrar cliente</button>
+  </div>
+
+  <div id="form-novo-cliente" style="display: none; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+    <form action="/clientes" method="POST">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="nome">Nome completo</label>
+          <input type="text" id="nome" name="nome" required />
+        </div>
+
+        <div class="form-group">
+          <label for="cpfCnpj">CPF ou CNPJ</label>
+          <input type="text" id="cpfCnpj" name="cpfCnpj" required
+                 placeholder="000.000.000-00" />
+          <small>É por aqui que o formulário reconhece o cliente depois.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="telefone">Telefone</label>
+          <input type="text" id="telefone" name="telefone" placeholder="(27) 99999-9999" />
+        </div>
+
+        <div class="form-group">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" name="email" />
+        </div>
+
+        <div class="form-group">
+          <label for="tipo">Tipo</label>
+          <select id="tipo" name="tipo">
+            <option value="Comprador">Comprador</option>
+            <option value="Investidor">Investidor</option>
+            <option value="Permutante">Permutante</option>
+          </select>
+        </div>
+
+        <div class="form-group full">
+          <label for="observacoes">Observações</label>
+          <textarea id="observacoes" name="observacoes"></textarea>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top: 16px;">
+        <button type="submit" class="button">Salvar cliente</button>
+        <button type="button" class="button secondary" id="btn-cancelar-cliente">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<% if (typeof erro !== 'undefined' && erro) { %>
+  <div class="empty-state" style="color: #b91c1c; margin-bottom: 16px;"><%= erro %></div>
+<% } %>
+
 <table>
   <thead>
     <tr>
@@ -31,5 +94,19 @@
     <% }) %>
   </tbody>
 </table>
+
+<script>
+  document.getElementById("btn-toggle-cliente").addEventListener("click", function () {
+    const form = document.getElementById("form-novo-cliente");
+    const aberto = form.style.display !== "none";
+    form.style.display = aberto ? "none" : "block";
+    this.textContent = aberto ? "Cadastrar cliente" : "Fechar";
+  });
+
+  document.getElementById("btn-cancelar-cliente").addEventListener("click", function () {
+    document.getElementById("form-novo-cliente").style.display = "none";
+    document.getElementById("btn-toggle-cliente").textContent = "Cadastrar cliente";
+  });
+</script>
 
 <%- include("partials/footer") %>
