@@ -115,6 +115,7 @@
                   <th>Documento</th>
                   <th>Categoria</th>
                   <th>Status</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -123,6 +124,12 @@
                     <td><%= c.nome %></td>
                     <td><%= c.categoria %></td>
                     <td><%= c.statusLabel %></td>
+                    <td>
+                      <form action="/contratos/<%= c.id %>/excluir" method="POST" class="inline-form"
+                            onsubmit="return confirm('Excluir este contrato? Os lançamentos financeiros dele também serão removidos.');">
+                        <button type="submit" class="button danger" style="font-size:12px;padding:5px 10px;">Excluir</button>
+                      </form>
+                    </td>
                   </tr>
                 <% }) %>
               </tbody>

@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const db = require('../database');
 const { getResumoUnidades } = require('../data/helpers');
+const exclusao = require('../services/exclusao');
 
 function criarEstruturaDocumentos(empreendimentoId) {
   const basePath = path.join(__dirname, '..', 'storage', 'documentos', empreendimentoId);
@@ -130,8 +131,18 @@ router.post('/empreendimentos', (req, res) => {
   res.redirect('/empreendimentos');
 });
 
-router.post('/empreendimentos/:id/delete', (req, res) => {
-  db.prepare('DELETE FROM empreendimentos WHERE id = ?').run(req.params.id);
+router.get('/empreendimentos/:id/excluir', (req, res) => {
+  const empreendimento = db.prepare('SELECT * FROM empreendimentos WHERE id = ?').get(req.params.id);
+  if (!empreendimento) return res.status(404).send('Empreendimento não encontrado');
+
+  res.render('empreendimento-excluir', {
+    empreendimento,
+    impacto: exclusao.impactoEmpreendimento(empreendimento.id)
+  });
+});
+
+router.post('/empreendimentos/:id/excluir', (req, res) => {
+  exclusao.excluirEmpreendimento(req.params.id);
   res.redirect('/empreendimentos');
 });
 
@@ -222,6 +233,62 @@ router.post('/clientes', (req, res) => {
   ).run([nome, documento || null, telefone || null, email || null, tipo || 'Comprador', observacoes || null]);
 
   res.redirect('/clientes');
+});
+
+router.get('/clientes/:id/editar', (req, res) => {
+  const cliente = db.prepare('SELECT * FROM clientes WHERE id = ?').get(parseInt(req.params.id));
+  if (!cliente) return res.status(404).send('Cliente não encontrado');
+
+  res.render('cliente-editar', { cliente, erro: req.query.erro || null });
+});
+
+router.post('/clientes/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const { nome, cpfCnpj, telefone, email, tipo, observacoes } = req.body;
+
+  if (!(nome || '').trim()) {
+    return res.redirect(`/clientes/${id}/editar?erro=${encodeURIComponent('Informe o nome do cliente.')}`);
+  }
+
+  const documento = (cpfCnpj || '').trim();
+  const conflito = documento
+    ? db.prepare('SELECT nome FROM clientes WHERE cpfCnpj = ? AND id <> ?').get([documento, id])
+    : null;
+
+  if (conflito) {
+    return res.redirect(
+      `/clientes/${id}/editar?erro=${encodeURIComponent(`Outro cliente já usa esse CPF/CNPJ: ${conflito.nome}`)}`
+    );
+  }
+
+  db.prepare(
+    'UPDATE clientes SET nome = ?, cpfCnpj = ?, telefone = ?, email = ?, tipo = ?, observacoes = ? WHERE id = ?'
+  ).run([nome, documento || null, telefone || null, email || null, tipo || 'Comprador', observacoes || null, id]);
+
+  res.redirect('/clientes');
+});
+
+// Mostra o que será removido junto, antes de confirmar
+router.get('/clientes/:id/excluir', (req, res) => {
+  const cliente = db.prepare('SELECT * FROM clientes WHERE id = ?').get(parseInt(req.params.id));
+  if (!cliente) return res.status(404).send('Cliente não encontrado');
+
+  res.render('cliente-excluir', { cliente, impacto: exclusao.impactoCliente(cliente.id) });
+});
+
+router.post('/clientes/:id/excluir', (req, res) => {
+  exclusao.excluirCliente(req.params.id);
+  res.redirect('/clientes');
+});
+
+router.post('/contratos/:id/excluir', (req, res) => {
+  exclusao.excluirContrato(req.params.id);
+  res.redirect('/contratos');
+});
+
+router.post('/documentos/:id/excluir', (req, res) => {
+  exclusao.excluirDocumento(req.params.id);
+  res.redirect('/documentos');
 });
 
 router.get('/contratos', (req, res) => {

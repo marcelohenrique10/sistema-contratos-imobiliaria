@@ -26,14 +26,18 @@
         <td><%= doc.unidadeNumero %></td>
         <td><%= doc.clienteNome %></td>
         <td><%= doc.data %></td>
-        <td>
+        <td style="white-space:nowrap;">
           <% if (doc.disponivel) { %>
-            <a class="button" href="<%= doc.caminho %>" download>Baixar</a>
+            <a class="button" style="font-size:12px;padding:5px 10px;" href="<%= doc.caminho %>" download>Baixar</a>
           <% } else { %>
-            <span style="color: #999; font-size: 0.875rem;" title="<%= doc.caminho || 'sem arquivo' %>">
+            <span style="color: #999; font-size: 0.8rem;" title="<%= doc.caminho || 'sem arquivo' %>">
               Arquivo indisponível
             </span>
           <% } %>
+          <form action="/documentos/<%= doc.id %>/excluir" method="POST" class="inline-form"
+                onsubmit="return confirm('Excluir este documento? O arquivo também será apagado.');">
+            <button type="submit" class="button danger" style="font-size:12px;padding:5px 10px;">Excluir</button>
+          </form>
         </td>
       </tr>
     <% }) %>

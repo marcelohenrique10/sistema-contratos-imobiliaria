@@ -78,6 +78,7 @@
       <th>Tipo</th>
       <th>Empreendimento</th>
       <th>Unidade</th>
+      <th>Ações</th>
     </tr>
   </thead>
   <tbody>
@@ -90,6 +91,12 @@
         <td><%= cliente.tipo %></td>
         <td><%= cliente.empreendimentoNome %></td>
         <td><%= cliente.unidadeNumero %></td>
+        <td style="white-space:nowrap;">
+          <a class="button secondary" style="font-size:12px;padding:5px 10px;"
+             href="/clientes/<%= cliente.id %>/editar">Editar</a>
+          <a class="button danger" style="font-size:12px;padding:5px 10px;"
+             href="/clientes/<%= cliente.id %>/excluir">Excluir</a>
+        </td>
       </tr>
     <% }) %>
   </tbody>

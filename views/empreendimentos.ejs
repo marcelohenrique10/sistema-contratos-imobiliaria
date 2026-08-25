@@ -110,13 +110,7 @@
           <a class="button" href="/empreendimentos/<%= empreendimento.id %>">Ver detalhes</a>
           <a class="button secondary" href="/espelho?empreendimento=<%= empreendimento.id %>">Ver espelho</a>
 
-          <form
-            action="/empreendimentos/<%= empreendimento.id %>/delete"
-            method="POST"
-            class="inline-form"
-          >
-            <button type="submit" class="button danger">Remover</button>
-          </form>
+          <a class="button danger" href="/empreendimentos/<%= empreendimento.id %>/excluir">Remover</a>
         </div>
       </div>
     <% }) %>
