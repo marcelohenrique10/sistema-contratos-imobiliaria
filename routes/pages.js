@@ -8,6 +8,7 @@ const exclusao = require('../services/exclusao');
 const unidades = require('../services/unidades');
 const financeiro = require('../services/financeiro');
 const upload = require('../services/upload');
+const retroativo = require('../services/retroativo');
 
 function criarEstruturaDocumentos(empreendimentoId) {
   const basePath = path.join(__dirname, '..', 'storage', 'documentos', empreendimentoId);
@@ -589,6 +590,7 @@ router.get('/contratos', (req, res) => {
   res.render('contratos', {
     operacoes, clientes, empreendimentos, unidades,
     anexado: Boolean(req.query.anexado),
+    aproveitados: parseInt(req.query.aproveitados) || 0,
     formLink: 'https://docs.google.com/forms/d/e/1FAIpQLSeqABI1z4kCqJUjv9gK3hc45BldUVBJcCjNiT13FyY2tF_V5Q/viewform'
   });
 });
@@ -619,9 +621,10 @@ router.post('/contratos/iniciar', (req, res) => {
     'INSERT INTO contratos (id, nome, categoria, status, formLink, empreendimentoId, unidadeId, clienteId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   );
 
-  templates.forEach((template, i) => {
+  const criados = templates.map((template, i) => {
+    const id = `${operacaoId}-${i}`;
     ins.run([
-      `${operacaoId}-${i}`,
+      id,
       template.nome,
       template.categoria,
       'pendente',
@@ -630,6 +633,14 @@ router.post('/contratos/iniciar', (req, res) => {
       unidadeId ? parseInt(unidadeId) : null,
       parseInt(clienteId)
     ]);
+    return { id, nome: template.nome };
+  });
+
+  // O formulário pode ter chegado antes desta operação existir. Se o documento
+  // já está pronto, o pendente adota em vez de ficar esperando à toa.
+  const aproveitados = retroativo.aproveitarDocumentosExistentes({
+    clienteId,
+    contratos: criados
   });
 
   if (unidadeId) {
@@ -640,7 +651,8 @@ router.post('/contratos/iniciar', (req, res) => {
     ]);
   }
 
-  res.redirect('/contratos');
+  const qs = aproveitados.length ? `?aproveitados=${aproveitados.length}` : '';
+  res.redirect(`/contratos${qs}`);
 });
 
 router.get('/financeiro', (req, res) => {

@@ -7,6 +7,14 @@
   <p>Geração e acompanhamento de operações contratuais.</p>
 </section>
 
+<% if (typeof aproveitados !== 'undefined' && aproveitados > 0) { %>
+  <div class="empty-state" style="color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:16px;">
+    <%= aproveitados %>
+    <%= aproveitados === 1 ? 'documento que já existia foi aproveitado' : 'documentos que já existiam foram aproveitados' %>
+    nesta operação — o formulário já tinha sido preenchido antes.
+  </div>
+<% } %>
+
 <% if (typeof anexado !== 'undefined' && anexado) { %>
   <div class="empty-state" style="color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:16px;">
     Documento anexado. O item deixou de aparecer como aguardando.
