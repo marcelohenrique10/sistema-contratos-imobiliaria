@@ -261,6 +261,40 @@ function converterParaPdf(caminhoDocx) {
  * Gera o documento a partir do payload do formulário.
  * Devolve { caminhoAbsoluto, caminhoPublico, nome, placeholdersSemValor }.
  */
+// Alguns blocos do documento são condicionais: sem cônjuge, os campos dele
+// saem vazios de propósito. Avisar sobre eles afogaria o buraco de verdade.
+const BLOCOS_CONDICIONAIS = [
+  { prefixo: 'CONJUGE_', presente: (d) => Boolean(d.conjuge && d.conjuge.nome) },
+  { prefixo: 'TESTEMUNHA_1_', presente: (d) => Boolean((d.testemunhas || [])[0]) },
+  { prefixo: 'TESTEMUNHA_2_', presente: (d) => Boolean((d.testemunhas || [])[1]) }
+];
+
+/**
+ * Separa o que ficou em branco em duas listas: o que falta mesmo e o que
+ * não se aplica a este documento.
+ *
+ * Só entram campos que ESTE modelo usa — o `valores` traz os 45 possíveis,
+ * mas cada modelo usa uma fatia. Cobrar o valor da SCP num Anexo é ruído.
+ */
+function conferirPreenchimento(valores, xml, documento) {
+  const noModelo = new Set(docx.listarPlaceholders(xml).map((p) => p.slice(1, -1)));
+
+  const vazios = Object.entries(valores)
+    .filter(([chave, v]) => noModelo.has(chave) && (v === undefined || v === null || String(v).trim() === ''))
+    .map(([chave]) => chave);
+
+  const ausentes = BLOCOS_CONDICIONAIS
+    .filter((b) => !b.presente(documento))
+    .map((b) => b.prefixo);
+
+  const condicional = (chave) => ausentes.some((prefixo) => chave.startsWith(prefixo));
+
+  return {
+    faltando: vazios.filter((c) => !condicional(c)),
+    naoSeAplica: vazios.filter(condicional)
+  };
+}
+
 async function gerarDocumento({ documento, empreendimento, empreendimentoId, unidadeNumero, unidadeTipo }) {
   const tipo = documento.tipo;
   const modelo = MODELOS[tipo];
@@ -302,18 +336,18 @@ async function gerarDocumento({ documento, empreendimento, empreendimentoId, uni
     .relative(path.join(__dirname, '..', 'storage'), caminhoFinal)
     .replace(/\\/g, '/');
 
-  // Campos sem valor viram string vazia; reportamos para o operador saber o
-  // que ainda precisa ser preenchido à mão.
-  const semValor = Object.entries(valores)
-    .filter(([, v]) => v === undefined || v === null || String(v).trim() === '')
-    .map(([k]) => k);
+  const { faltando, naoSeAplica } = conferirPreenchimento(valores, xml, documento);
 
   return {
     caminhoAbsoluto: caminhoFinal,
     caminhoPublico: `/storage/${relativo}`,
     nome: nomeFinal,
-    placeholdersSemValor: semValor
+    placeholdersSemValor: faltando,
+    placeholdersNaoAplicaveis: naoSeAplica
   };
 }
 
-module.exports = { gerarDocumento, MODELOS, montarValores, parsearData, formatarData, adicionarMeses };
+module.exports = {
+  gerarDocumento, MODELOS, montarValores, conferirPreenchimento,
+  parsearData, formatarData, adicionarMeses
+};

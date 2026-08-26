@@ -58,6 +58,19 @@ function normalizarTipoDocumento(tipo) {
   return String(tipo || '').replace(/^\s*\d+\s*[.)-]\s*/, '').trim();
 }
 
+// Documentos gerados antes desta coluna existir têm NULL. Nesse caso não dá
+// para afirmar que estava tudo certo — devolvemos lista vazia, mas o log
+// registra que a conferência é desconhecida.
+function lerCamposSemValor(guardado) {
+  if (!guardado) return [];
+  try {
+    const lista = JSON.parse(guardado);
+    return Array.isArray(lista) ? lista : [];
+  } catch (_) {
+    return [];
+  }
+}
+
 router.post('/cliente', checkAuth, (req, res) => {
   const { nome, cpfCnpj, telefone, email, tipo, observacoes, unidadeNumero } = req.body;
   const empreendimentoId = resolverEmpreendimentoId(req.body);
@@ -216,14 +229,20 @@ router.post('/documento', checkAuth, async (req, res) => {
     // criar outro arquivo e outro cronograma de recebíveis.
     if (respostaId) {
       const jaGerado = db.prepare(
-        'SELECT id, caminho FROM documentos WHERE respostaId = ? AND tipo = ?'
+        'SELECT id, caminho, camposSemValor FROM documentos WHERE respostaId = ? AND tipo = ?'
       ).get([String(respostaId), normalizarTipoDocumento(documento.tipo)]);
 
       if (jaGerado) {
-        logWebhook('documento', req.body, 'sucesso', 'Resposta já processada, documento reaproveitado');
+        // O documento não é gerado de novo, mas o aviso precisa continuar
+        // verdadeiro: devolvemos os campos em branco que ele já tinha.
+        const faltando = lerCamposSemValor(jaGerado.camposSemValor);
+
+        logWebhook('documento', req.body, 'sucesso',
+          `Resposta já processada, documento reaproveitado${faltando.length ? ` (${faltando.length} campo(s) em branco)` : ''}`);
+
         return res.json({
           sucesso: true, id: jaGerado.id, arquivo: jaGerado.caminho,
-          camposSemValor: [], jaProcessado: true
+          camposSemValor: faltando, camposNaoAplicaveis: [], jaProcessado: true
         });
       }
     }
@@ -234,9 +253,10 @@ router.post('/documento', checkAuth, async (req, res) => {
 
     const resultado = await gerarDocumento({ documento, empreendimento, empreendimentoId, unidadeNumero });
     const unidadeId = resolverUnidadeId({ unidadeId: req.body.unidadeId, unidadeNumero, empreendimentoId });
+    const faltando = resultado.placeholdersSemValor;
 
     const insercao = db.prepare(
-      'INSERT INTO documentos (tipo, nome, empreendimentoId, unidadeId, clienteId, caminho, data, respostaId, contratoId, origem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO documentos (tipo, nome, empreendimentoId, unidadeId, clienteId, caminho, data, respostaId, contratoId, origem, camposSemValor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     ).run([
       normalizarTipoDocumento(documento.tipo),
       `${normalizarTipoDocumento(documento.tipo)} - ${(documento.comprador || {}).nome || 'sem nome'}`,
@@ -247,7 +267,8 @@ router.post('/documento', checkAuth, async (req, res) => {
       new Date().toISOString().slice(0, 10),
       respostaId || null,
       contratoId || null,
-      'gerado'
+      'gerado',
+      JSON.stringify(faltando)
     ]);
 
     if (contratoId) {
@@ -261,12 +282,17 @@ router.post('/documento', checkAuth, async (req, res) => {
       compraVenda: documento.compraVenda
     });
 
-    logWebhook('documento', req.body, 'sucesso');
+    // Documento gerado com buraco continua parecendo pronto. O aviso é o
+    // único jeito de alguém notar — registramos também no log.
+    logWebhook('documento', req.body, 'sucesso',
+      faltando.length ? `Gerado com ${faltando.length} campo(s) em branco: ${faltando.join(', ')}` : null);
+
     res.json({
       sucesso: true,
       id: Number(insercao.lastInsertRowid),
       arquivo: resultado.caminhoPublico,
-      camposSemValor: resultado.placeholdersSemValor,
+      camposSemValor: faltando,
+      camposNaoAplicaveis: resultado.placeholdersNaoAplicaveis,
       recebiveis
     });
   } catch (err) {

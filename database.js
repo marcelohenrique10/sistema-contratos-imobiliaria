@@ -147,6 +147,12 @@ if (!colunasDocumentos.includes('nomeOriginal')) {
 if (!colunasDocumentos.includes('contratoId')) {
   db.exec('ALTER TABLE documentos ADD COLUMN contratoId TEXT');
 }
+// Quais campos do modelo ficaram em branco neste documento, em JSON. Guardar
+// permite responder a verdade quando a mesma resposta é reprocessada — sem
+// isso o aviso sairia dizendo "nenhum campo em branco" sem ter conferido.
+if (!colunasDocumentos.includes('camposSemValor')) {
+  db.exec('ALTER TABLE documentos ADD COLUMN camposSemValor TEXT');
+}
 
 // Seed empreendimentos
 if (db.prepare('SELECT COUNT(*) as n FROM empreendimentos').get().n === 0) {
