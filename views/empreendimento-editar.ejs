@@ -1,0 +1,109 @@
+<%- include("partials/header") %>
+
+<section class="page-header">
+  <h2>Editar empreendimento</h2>
+  <p><%= empreendimento.nome %></p>
+</section>
+
+<% if (erro) { %>
+  <div class="empty-state" style="color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;margin-bottom:16px;">
+    <%= erro %>
+  </div>
+<% } %>
+
+<section class="form-card">
+  <form action="/empreendimentos/<%= empreendimento.id %>" method="POST">
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="nome">Nome</label>
+        <input type="text" id="nome" name="nome" value="<%= empreendimento.nome %>" required />
+        <small>Nome comercial, usado no título dos contratos.</small>
+      </div>
+
+      <div class="form-group">
+        <label for="endereco">Endereço</label>
+        <input type="text" id="endereco" name="endereco" value="<%= empreendimento.endereco || '' %>" />
+      </div>
+
+      <div class="form-group">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          <option value="ativo" <%= empreendimento.status === 'ativo' ? 'selected' : '' %>>Ativo</option>
+          <option value="em_planejamento" <%= empreendimento.status === 'em_planejamento' ? 'selected' : '' %>>Em planejamento</option>
+          <option value="concluido" <%= empreendimento.status === 'concluido' ? 'selected' : '' %>>Concluído</option>
+        </select>
+        <small>Concluídos saem do menu do formulário.</small>
+      </div>
+
+      <div class="form-group full">
+        <label for="descricao">Descrição</label>
+        <textarea id="descricao" name="descricao"><%= empreendimento.descricao || '' %></textarea>
+      </div>
+    </div>
+
+    <h3 style="margin:28px 0 4px;border-top:1px solid #e5e7eb;padding-top:20px;">Dados da SPE</h3>
+    <p style="margin:0 0 16px;color:#6b7280;font-size:14px;">
+      Entram nos contratos como parte vendedora.
+    </p>
+
+    <div class="form-grid">
+      <div class="form-group full">
+        <label for="razaoSocial">Razão social</label>
+        <input type="text" id="razaoSocial" name="razaoSocial" value="<%= empreendimento.razaoSocial || '' %>"
+               placeholder="HIGH TOWER EMPREENDIMENTO IMOBILIÁRIO SPE LTDA" />
+      </div>
+
+      <div class="form-group">
+        <label for="cnpj">CNPJ</label>
+        <input type="text" id="cnpj" name="cnpj" value="<%= empreendimento.cnpj || '' %>" placeholder="00.000.000/0001-00" />
+      </div>
+
+      <div class="form-group">
+        <label for="cep">CEP</label>
+        <input type="text" id="cep" name="cep" value="<%= empreendimento.cep || '' %>" placeholder="29190-000" />
+      </div>
+
+      <div class="form-group">
+        <label for="socioAdmin">Sócio administrador</label>
+        <input type="text" id="socioAdmin" name="socioAdmin" value="<%= empreendimento.socioAdmin || '' %>" />
+      </div>
+
+      <div class="form-group">
+        <label for="email">E-mail</label>
+        <input type="email" id="email" name="email" value="<%= empreendimento.email || '' %>" />
+      </div>
+    </div>
+
+    <h3 style="margin:28px 0 4px;border-top:1px solid #e5e7eb;padding-top:20px;">Links</h3>
+    <p style="margin:0 0 16px;color:#6b7280;font-size:14px;">
+      Cole o endereço completo. Os botões na tela do empreendimento levam para cá.
+    </p>
+
+    <div class="form-grid">
+      <div class="form-group full">
+        <label for="memorialLink">Memorial descritivo</label>
+        <input type="url" id="memorialLink" name="memorialLink" value="<%= empreendimento.memorialLink %>"
+               placeholder="https://drive.google.com/..." />
+      </div>
+
+      <div class="form-group full">
+        <label for="plantaLink">Plantas</label>
+        <input type="url" id="plantaLink" name="plantaLink" value="<%= empreendimento.plantaLink %>"
+               placeholder="https://drive.google.com/..." />
+      </div>
+
+      <div class="form-group full">
+        <label for="tabelaVendaLink">Tabela de vendas</label>
+        <input type="url" id="tabelaVendaLink" name="tabelaVendaLink" value="<%= empreendimento.tabelaVendaLink %>"
+               placeholder="https://drive.google.com/..." />
+      </div>
+    </div>
+
+    <div class="actions" style="margin-top:20px;">
+      <button type="submit" class="button">Salvar alterações</button>
+      <a class="button secondary" href="/empreendimentos/<%= empreendimento.id %>">Cancelar</a>
+    </div>
+  </form>
+</section>
+
+<%- include("partials/footer") %>

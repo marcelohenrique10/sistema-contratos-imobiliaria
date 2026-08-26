@@ -1,11 +1,22 @@
 <%- include("partials/header") %>
 
 <section class="page-header">
-  <h2><%= empreendimento.nome %></h2>
-  <p><strong>Status:</strong> <%= empreendimento.statusLabel %></p>
-  <p><strong>Endereço:</strong> <%= empreendimento.endereco %></p>
-  <p><%= empreendimento.descricao %></p>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+    <div>
+      <h2><%= empreendimento.nome %></h2>
+      <p><strong>Status:</strong> <%= empreendimento.statusLabel %></p>
+      <p><strong>Endereço:</strong> <%= empreendimento.endereco %></p>
+      <p><%= empreendimento.descricao %></p>
+    </div>
+    <a class="button secondary" href="/empreendimentos/<%= empreendimento.id %>/editar">Editar empreendimento</a>
+  </div>
 </section>
+
+<% if (sucesso) { %>
+  <div class="empty-state" style="color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:16px;">
+    Alterações salvas.
+  </div>
+<% } %>
 
 <section class="cards">
   <div class="card">
@@ -26,24 +37,26 @@
   </div>
 </section>
 
+<%
+  const links = [
+    ['Memorial', empreendimento.memorialLink, 'memorial descritivo'],
+    ['Plantas', empreendimento.plantaLink, 'as plantas'],
+    ['Tabela de vendas', empreendimento.tabelaVendaLink, 'a tabela de vendas']
+  ];
+%>
+
 <section class="form-card">
   <h3>Documentos vinculados</h3>
   <div class="actions">
-    <% if (empreendimento.memorialLink) { %>
-      <a class="button secondary" href="<%= empreendimento.memorialLink %>" target="_blank">Memorial</a>
-    <% } else { %>
-      <button class="button secondary" disabled title="Link não cadastrado">Memorial</button>
-    <% } %>
-    <% if (empreendimento.plantaLink) { %>
-      <a class="button secondary" href="<%= empreendimento.plantaLink %>" target="_blank">Plantas</a>
-    <% } else { %>
-      <button class="button secondary" disabled title="Link não cadastrado">Plantas</button>
-    <% } %>
-    <% if (empreendimento.tabelaVendaLink) { %>
-      <a class="button secondary" href="<%= empreendimento.tabelaVendaLink %>" target="_blank">Tabela de vendas</a>
-    <% } else { %>
-      <button class="button secondary" disabled title="Link não cadastrado">Tabela de vendas</button>
-    <% } %>
+    <% links.forEach(([rotulo, url, descricao]) => { %>
+      <% if (url) { %>
+        <a class="button secondary" href="<%= url %>" target="_blank" rel="noopener noreferrer"><%= rotulo %></a>
+      <% } else { %>
+        <button type="button" class="button secondary"
+                data-sem-link="<%= descricao %>"
+                style="opacity:.65;"><%= rotulo %></button>
+      <% } %>
+    <% }) %>
     <a class="button" href="/espelho?empreendimento=<%= empreendimento.id %>">Abrir espelho</a>
   </div>
 </section>
@@ -57,37 +70,123 @@
 </section>
 
 <div class="cards">
-  <div class="card">
-    <h3>Memorial descritivo</h3>
-    <% if (empreendimento.memorialLink) { %>
-      <a class="button" href="<%= empreendimento.memorialLink %>" target="_blank">Abrir</a>
-    <% } else { %>
-      <button class="button" disabled title="Link não cadastrado">Abrir</button>
-    <% } %>
+  <% [['Memorial descritivo', empreendimento.memorialLink, 'o memorial descritivo'],
+      ['Planta', empreendimento.plantaLink, 'as plantas'],
+      ['Tabela de vendas', empreendimento.tabelaVendaLink, 'a tabela de vendas']].forEach(([titulo, url, descricao]) => { %>
+    <div class="card">
+      <h3><%= titulo %></h3>
+      <% if (url) { %>
+        <a class="button" href="<%= url %>" target="_blank" rel="noopener noreferrer">Abrir</a>
+      <% } else { %>
+        <p style="margin:0 0 12px;color:#9ca3af;font-size:13px;">Nenhum link cadastrado</p>
+        <button type="button" class="button" data-sem-link="<%= descricao %>" style="opacity:.65;">Abrir</button>
+      <% } %>
+    </div>
+  <% }) %>
+</div>
+
+<section class="page-header" style="margin-top:32px;">
+  <h3>Unidades</h3>
+</section>
+
+<% if (erro) { %>
+  <div class="empty-state" style="color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;margin-bottom:16px;">
+    <%= erro %>
+  </div>
+<% } %>
+<% if (aviso) { %>
+  <div class="empty-state" style="color:#92400e;background:#fffbeb;border:1px solid #fde68a;margin-bottom:16px;">
+    <%= aviso %>
+  </div>
+<% } %>
+
+<div class="form-card" style="margin-bottom:24px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <h3 style="margin:0 0 4px;">Cadastrar unidades</h3>
+      <p style="margin:0;color:#6b7280;font-size:14px;">
+        Crie um andar inteiro de uma vez, ou uma unidade avulsa.
+      </p>
+    </div>
+    <button class="button" id="btn-unidades">Adicionar unidades</button>
   </div>
 
-  <div class="card">
-    <h3>Planta</h3>
-    <% if (empreendimento.plantaLink) { %>
-      <a class="button" href="<%= empreendimento.plantaLink %>" target="_blank">Abrir</a>
-    <% } else { %>
-      <button class="button" disabled title="Link não cadastrado">Abrir</button>
-    <% } %>
-  </div>
+  <div id="form-unidades" style="display:none;margin-top:20px;border-top:1px solid #e5e7eb;padding-top:20px;">
 
-  <div class="card">
-    <h3>Tabela de vendas</h3>
-    <% if (empreendimento.tabelaVendaLink) { %>
-      <a class="button" href="<%= empreendimento.tabelaVendaLink %>" target="_blank">Abrir</a>
-    <% } else { %>
-      <button class="button" disabled title="Link não cadastrado">Abrir</button>
-    <% } %>
+    <h4 style="margin:0 0 4px;">Em lote, por pavimento</h4>
+    <p style="margin:0 0 14px;color:#6b7280;font-size:13px;">
+      A numeração segue o padrão do sistema: pavimento 9 com 2 unidades vira 901 e 902.
+      Unidades que já existem são mantidas, nunca sobrescritas.
+    </p>
+
+    <form action="/empreendimentos/<%= empreendimento.id %>/unidades/lote" method="POST">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="pavimentoInicial">Do pavimento</label>
+          <input type="number" id="pavimentoInicial" name="pavimentoInicial" min="1" value="1" required />
+        </div>
+        <div class="form-group">
+          <label for="pavimentoFinal">Até o pavimento</label>
+          <input type="number" id="pavimentoFinal" name="pavimentoFinal" min="1" value="10" required />
+        </div>
+        <div class="form-group">
+          <label for="porPavimento">Unidades por pavimento</label>
+          <input type="number" id="porPavimento" name="porPavimento" min="1" max="20" value="4" required />
+        </div>
+        <div class="form-group">
+          <label for="tipologiaLote">Tipologia</label>
+          <input type="text" id="tipologiaLote" name="tipologia" placeholder="2Q" />
+        </div>
+        <div class="form-group">
+          <label for="metragemLote">Metragem</label>
+          <input type="text" id="metragemLote" name="metragem" placeholder="68,00 m²" />
+        </div>
+      </div>
+      <div class="actions" style="margin-top:12px;">
+        <button type="submit" class="button">Gerar unidades</button>
+      </div>
+    </form>
+
+    <h4 style="margin:28px 0 14px;border-top:1px solid #e5e7eb;padding-top:20px;">Uma unidade avulsa</h4>
+
+    <form action="/empreendimentos/<%= empreendimento.id %>/unidades" method="POST">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="numero">Número</label>
+          <input type="text" id="numero" name="numero" placeholder="1101" required />
+        </div>
+        <div class="form-group">
+          <label for="pavimento">Pavimento</label>
+          <input type="text" id="pavimento" name="pavimento" placeholder="11º" />
+        </div>
+        <div class="form-group">
+          <label for="tipologia">Tipologia</label>
+          <input type="text" id="tipologia" name="tipologia" placeholder="Cobertura Duplex" />
+        </div>
+        <div class="form-group">
+          <label for="metragem">Metragem</label>
+          <input type="text" id="metragem" name="metragem" placeholder="177,73 m²" />
+        </div>
+        <div class="form-group">
+          <label for="status">Status</label>
+          <select id="status" name="status">
+            <% Object.entries(statusMap).forEach(([v, r]) => { %>
+              <option value="<%= v %>"><%= r %></option>
+            <% }) %>
+          </select>
+        </div>
+      </div>
+      <div class="actions" style="margin-top:12px;">
+        <button type="submit" class="button">Adicionar unidade</button>
+        <button type="button" class="button secondary" id="btn-cancelar-unidades">Fechar</button>
+      </div>
+    </form>
   </div>
 </div>
 
 <% if (unidades.length === 0) { %>
   <div class="empty-state">
-    Nenhuma unidade cadastrada para este empreendimento ainda.
+    Nenhuma unidade cadastrada ainda. Use o botão acima para criar o espelho de vendas.
   </div>
 <% } else { %>
   <table>
@@ -98,6 +197,7 @@
         <th>Tipologia</th>
         <th>Metragem</th>
         <th>Status</th>
+        <th>Ações</th>
       </tr>
     </thead>
     <tbody>
@@ -108,10 +208,45 @@
           <td><%= unidade.tipologia %></td>
           <td><%= unidade.metragem %></td>
           <td><%= unidade.statusLabel %></td>
+          <td style="white-space:nowrap;">
+            <a class="button secondary" style="font-size:12px;padding:5px 10px;"
+               href="/unidades/<%= unidade.id %>/editar">Editar</a>
+            <form action="/unidades/<%= unidade.id %>/excluir" method="POST" class="inline-form"
+                  onsubmit="return confirm('Excluir a unidade <%= unidade.numero %>? Contratos e documentos ligados a ela serão mantidos, apenas sem a referência.');">
+              <button type="submit" class="button danger" style="font-size:12px;padding:5px 10px;">Excluir</button>
+            </form>
+          </td>
         </tr>
       <% }) %>
     </tbody>
   </table>
 <% } %>
+
+<script>
+  // Botões de link sem endereço cadastrado: explicam e levam para a edição.
+  document.querySelectorAll("[data-sem-link]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      const oQue = this.dataset.semLink;
+      const ir = confirm(
+        "Ainda não há link cadastrado para " + oQue + ".\n\n" +
+        "Você cadastra o link em Editar empreendimento.\n\n" +
+        "Ir para a edição agora?"
+      );
+      if (ir) window.location.href = "/empreendimentos/<%= empreendimento.id %>/editar";
+    });
+  });
+
+  document.getElementById("btn-unidades").addEventListener("click", function () {
+    const bloco = document.getElementById("form-unidades");
+    const aberto = bloco.style.display !== "none";
+    bloco.style.display = aberto ? "none" : "block";
+    this.textContent = aberto ? "Adicionar unidades" : "Fechar";
+  });
+
+  document.getElementById("btn-cancelar-unidades").addEventListener("click", function () {
+    document.getElementById("form-unidades").style.display = "none";
+    document.getElementById("btn-unidades").textContent = "Adicionar unidades";
+  });
+</script>
 
 <%- include("partials/footer") %>

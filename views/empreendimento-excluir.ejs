@@ -1,0 +1,53 @@
+<%- include("partials/header") %>
+
+<section class="page-header">
+  <h2>Excluir empreendimento</h2>
+  <p>Esta é a exclusão de maior alcance no sistema. Leia antes de confirmar.</p>
+</section>
+
+<section class="form-card">
+  <h3 style="margin:0 0 4px;"><%= empreendimento.nome %></h3>
+  <p style="margin:0 0 20px;color:#6b7280;font-size:14px;">
+    <%= empreendimento.razaoSocial || 'sem razão social cadastrada' %>
+  </p>
+
+  <%
+    const itens = [
+      [impacto.unidades, 'unidade', 'unidades'],
+      [impacto.contratos, 'contrato', 'contratos'],
+      [impacto.documentos, 'documento gerado (o arquivo também será apagado)', 'documentos gerados (os arquivos também serão apagados)'],
+      [impacto.financeiro, 'lançamento no financeiro', 'lançamentos no financeiro']
+    ].filter(i => i[0] > 0);
+  %>
+
+  <% if (itens.length === 0 && impacto.clientes === 0) { %>
+    <div class="empty-state" style="margin-bottom:20px;">
+      Nada está vinculado a este empreendimento. A exclusão é segura.
+    </div>
+  <% } else { %>
+    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
+      <strong style="color:#b91c1c;">Será removido junto:</strong>
+      <ul style="margin:10px 0 0;padding-left:20px;color:#7f1d1d;">
+        <% itens.forEach(i => { %>
+          <li><strong><%= i[0] %></strong> <%= i[0] === 1 ? i[1] : i[2] %></li>
+        <% }) %>
+      </ul>
+      <% if (impacto.clientes > 0) { %>
+        <p style="margin:12px 0 0;color:#7f1d1d;font-size:14px;">
+          <strong><%= impacto.clientes %></strong>
+          <%= impacto.clientes === 1 ? 'cliente será desvinculado' : 'clientes serão desvinculados' %>,
+          mas o cadastro deles permanece.
+        </p>
+      <% } %>
+    </div>
+  <% } %>
+
+  <div class="actions">
+    <form action="/empreendimentos/<%= empreendimento.id %>/excluir" method="POST" class="inline-form">
+      <button type="submit" class="button danger">Excluir definitivamente</button>
+    </form>
+    <a class="button secondary" href="/empreendimentos">Cancelar</a>
+  </div>
+</section>
+
+<%- include("partials/footer") %>

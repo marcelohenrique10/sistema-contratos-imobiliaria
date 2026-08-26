@@ -1,0 +1,289 @@
+{
+  "name": "TESTE LOCAL - formulario contratual de marchi",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "aaaa1111-0000-4000-8000-000000000001",
+      "name": "Executar manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        -384
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ATENCAO: o formulario nao pergunta o empreendimento. Enquanto nao existir\n// essa pergunta, defina aqui qual empreendimento recebe as respostas.\nconst EMPREENDIMENTO_PADRAO = 'high-tower';\n\nconst d = $input.item.json;\n\n// Lookup tolerante: ignora espaços/maiúsculas e tenta sufixos _1/_2\n// (n8n sufixa headers duplicados em algumas versões)\nconst v = (field) => {\n  const alvo = field.trim().toLowerCase();\n  const candidatos = [];\n  for (const key of Object.keys(d)) {\n    const k = key.trim().toLowerCase();\n    if (k === alvo || k === `${alvo}_1` || k === `${alvo}_2`) {\n      candidatos.push(String(d[key] ?? '').trim());\n    }\n  }\n  return candidatos.find(c => c !== '') ?? '';\n};\n\n// A lista suspensa do formulario devolve \"1. Contrato de...\". O prefixo\n// numerico precisa sair, senao o mapa blocosPorTipo nunca casa.\nconst tipo = v('Qual documento você deseja gerar?')\n  .replace(/^\\s*\\d+\\s*[.)-]\\s*/, '')\n  .trim();\n\n// ---------- Blocos comuns ----------\nconst dadosGerais = {\n  dataHora: v('Carimbo de data/hora'),\n  dataDocumento: v('Data do documento'),\n  cidadeUf: v('Cidade/UF da assinatura - ex:(Aracruz/ES)'),\n  responsavel: v('Responsável interno pelo preenchimento'),\n};\n\nconst comprador = {\n  nome: v('Nome completo do comprador'),\n  cpf: v('CPF do comprador'),\n  nacionalidade: v('Nacionalidade do comprador'),\n  estadoCivil: v('Estado civil do comprador'),\n  profissao: v('Profissão do comprador'),\n  rg: v('RG do comprador'),\n  orgaoEmissorRg: v('Órgão emissor do RG do comprador'),\n  endereco: v('Endereço completo do comprador'),\n  cep: v('CEP do comprador'),\n  telefone: v('Telefone com DDD do comprador'),\n  email: v('E-mail do comprador'),\n};\n\nconst temConjuge = v('O comprador possui cônjuge que deve constar no documento?').toLowerCase().startsWith('s');\nconst conjuge = temConjuge ? {\n  nome: v('Nome completo do cônjuge'),\n  cpf: v('CPF do cônjuge'),\n  nacionalidade: v('Nacionalidade do cônjuge'),\n  profissao: v('Profissão do cônjuge'),\n  rg: v('RG do cônjuge'),\n  orgaoEmissorRg: v('Órgão emissor do RG do cônjuge'),\n} : null;\n\nconst testemunhas = [1, 2]\n  .map(n => ({ nome: v(`Nome da testemunha ${n}`), cpf: v(`CPF da testemunha ${n}`) }))\n  .filter(t => t.nome || t.cpf);\n\n// ---------- Compra e Venda ----------\nconst parcelas = [];\nfor (let n = 1; n <= 5; n++) {\n  const tipoParcela = v(`Tipo da parcela ${n}`);\n  if (!tipoParcela) continue;\n  parcelas.push({\n    numero: n,\n    tipo: tipoParcela,\n    vencimentoInicial: v(`Data inicial de vencimento da parcela ${n}`),\n    valorUnitario: v(`Valor unitário da parcela ${n}`),\n    quantidade: v(`Quantidade da parcela ${n}`),\n    percentual: v(`Percentual da parcela ${n}`),\n    reajustavel: v(`A parcela ${n} é reajustável?`),\n    indice: v(`Índice da parcela ${n}`),\n    formaPagamento: v(`Forma de pagamento da parcela ${n}`),\n  });\n}\n\nconst compraVenda = {\n  unidade: {\n    tipo: v('Tipo da unidade - ex:(apartamento)'),\n    numero: v('Número da unidade'),\n    numeroExtenso: v('Número da unidade por extenso'),\n    vagasGaragem: v('Quantidade de vagas de garagem'),\n    numerosVagas: v('Números das vagas'),\n    areaPrivativa: v('Área privativa (m²)'),\n    areaConstrucao: v('Área de construção (m²)'),\n    fracaoIdeal: v('Fração ideal'),\n    descricaoPlanta: v('Descrição da planta - ex:( 3 quartos, 1 suíte, varanda gourmet...)'),\n  },\n  precoTotal: v('Preço total do imóvel (R$)'),\n  precoExtenso: v('Preço total por extenso'),\n  qtdTiposParcelas: v('Quantos tipos de parcelas existem nesta negociação?'),\n  parcelas,\n  observacaoEspecial: v('Existe alguma observação especial na negociação?'),\n  temPersonalizacao: v('Existe personalização de unidade / ajuste comercial que precisa constar?'),\n  descricaoPersonalizacao: v('Descreva a personalização / ajuste'),\n};\n\n// ---------- Anexo (usa Tipo/Número da unidade sem o \"ex:\") ----------\nconst anexo = {\n  tipoUnidade: v('Tipo da unidade'),\n  numeroUnidade: v('Número da unidade'),\n  numeroUnidadeExtenso: v('Número da unidade por extenso'),\n};\n\n// ---------- SCP ----------\nconst scp = {\n  razaoSocial: v('Razão social do empreendimento'),\n  cnpj: v('CNPJ'),\n  enderecoEmpresa: v('Endereço completo da empresa'),\n  cepEmpresa: v('CEP da empresa'),\n  valorEntrada: v('Valor da Entrada'),\n  numeroUnidades: v('Número de Unidades'),\n  entrada: v('Entrada'),\n  parcelaMensal: v('Parcela Mensal'),\n  parcelaIntermediaria: v('Parcela Intermediaria'),\n  parcelaAnual: v('Parcela Anual'),\n  parcelaChave: v('Parcela Chave'),\n  quantidade: v('Quantidade'),\n  quantidadeMensal: v('Quantidade Mensal'),\n  quantidadeIntermediaria: v('Quantidade Intermediaria'),\n  quantidadeAnual: v('Quantidade Anual'),\n  quantidadeChave: v('Quantidade Chave'),\n  valor: v('Valor'),\n  valorMensal: v('Valor Mensal'),\n  valorIntermediario: v('Valor Intermediario'),\n  valorAnual: v('Valor Anual'),\n  valorChave: v('Valor Chave'),\n  valorTotal: v('Valor Total'),\n  valorTotalMensal: v('Valor Total Mensal'),\n  valorTotalIntermediario: v('Valor Total Intermediario'),\n  valorTotalAnual: v('Valor Total Anual'),\n  valorTotalChave: v('Valor Total Chave'),\n};\n\n// ---------- Empréstimo ----------\nconst emprestimo = {\n  nomePj: v('Nome da Pessoa Jurídica'),\n  cnpj: v('CNPJ'),\n  endereco: v('Endereço completo'),\n  cep: v('CEP'),\n  residencia: v('Residência?'),\n  enderecoImovel: v('Endereço do imóvel'),\n};\n\n// ---------- Permuta ----------\nconst areasPermuta = [];\nfor (let n = 1; n <= 7; n++) {\n  const end = v(`Endereço Área ${n}`);\n  if (!end) continue;\n  areasPermuta.push({\n    numero: n,\n    endereco: end,\n    inscricao: v(`Inscrição Área ${n}`),\n    areaTerreno: v(`Área do Terreno Área ${n}`),\n    areaConstruida: v(`Área Construída Área ${n}`),\n    matriculaRgi: v(`Matrícula (RGI) Área ${n}`),\n  });\n}\n\nconst permuta = {\n  areas: areasPermuta,\n  pctVgvUnidades: v('Porcentagem referente ao Valor Geral de Venda das Unidades'),\n  pctVgvPosViabilidade: v('Nova porcentagem correspondente do VGV, após realização dos estudos de viabilidade'),\n  alteracaoPctVgv: v('Alteração da porcentagem do VGV por razões técnicas e/ou mercadológicas'),\n  pctVgvEntrega: v('Porcentagem apurada do VGV das Unidades mediante a entrega'),\n  pctValorGlobalPermuta: v('Porcentagem do valor global atribuído à permuta correspondente ao VGV'),\n  pctValorPresentePermutaFisica: v('Porcentagem do valor presente da permuta física correspondente ao VGV'),\n  pctPermutaFisica: v('Porcentagem da permuta física correspondente ao VGV'),\n  descricaoAreas: v('Descrição das áreas do imóvel'),\n  pctVgvQuitacaoUnidades: v('Porcentagem do VGV para quitação via entrega de unidades autônomas'),\n  pctVgvPosProjetoArquitetonico: v('Porcentagem do VGV após estudos de viabilidade e aprovação do projeto arquitetônico'),\n  data: v('Data'),\n  nomeEmpreendimento: v('Nome do Empreendimento'),\n  primeiroPermutante: v('Dados Primeiro Permutante'),\n  segundoPermutante: v('Dados Segundo Permutante'),\n  intermediadora: v('Intermediadora (caso tenha)'),\n  precoSegundaPermutante: v('Preço Segunda Permutante'),\n  banco: v('Banco do Pagamento'),\n  agencia: v('AG'),\n  contaCorrente: v('Conta Corrente'),\n  op: v('OP'),\n  titularidade: v('Titularidade'),\n  valorMensalMateriais: v('Valor Mensal Fornecimento de Materiais'),\n};\n\n// ---------- Monta payload por tipo ----------\nconst blocosPorTipo = {\n  'Contrato de Promessa de Compra e Venda': { compraVenda },\n  'Anexo ao Contrato de Promessa de Compra e Venda': { anexo },\n  'Termo de Anuência com Outorga de Poderes': {},\n  'Termo de Ciência e Anuência para Empréstimo': { emprestimo },\n  'Termo de Adesão Preliminar SCP': { scp },\n  'Contrato de Permuta': { permuta },\n};\n\nreturn [{\n  json: {\n    // Flat: compatibilidade com Criar Cliente / Criar Contrato\n    tipoDocumento: tipo,\n    nome: comprador.nome || permuta.primeiroPermutante,\n    cpfCnpj: comprador.cpf || scp.cnpj,\n    telefone: comprador.telefone,\n    email: comprador.email,\n    responsavel: dadosGerais.responsavel,\n\n    // A aplicacao resolve o id da unidade a partir do numero + empreendimento.\n    empreendimentoId: EMPREENDIMENTO_PADRAO,\n    unidadeNumero: v('Número da unidade'),\n    dataHora: dadosGerais.dataHora,\n\n    // Estruturado: tudo que o gerador de documento precisa\n    documento: {\n      tipo,\n      dadosGerais,\n      comprador,\n      conjuge,\n      testemunhas,\n      ...(blocosPorTipo[tipo] ?? { compraVenda, anexo, emprestimo, scp, permuta }),\n    },\n  },\n}];"
+      },
+      "id": "c9ca53bd-6730-4cd8-a3c3-895d5b9cecc2",
+      "name": "Extrair Campos forms 2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        -384
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/webhook/cliente",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer dev-local-secret-troque-em-producao"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "nome",
+              "value": "={{ $json.nome }}"
+            },
+            {
+              "name": "cpfCnpj",
+              "value": "={{ $json.cpfCnpj }}"
+            },
+            {
+              "name": "telefone",
+              "value": "={{ $json.telefone }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "tipo",
+              "value": "Comprador"
+            },
+            {
+              "name": "observacoes",
+              "value": "={{ $json.tipoDocumento }} | Resp: {{ $json.responsavel }}"
+            },
+            {
+              "name": "empreendimentoId",
+              "value": "={{ $json.empreendimentoId }}"
+            },
+            {
+              "name": "unidadeNumero",
+              "value": "={{ $json.unidadeNumero }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7656eefc-1d16-4cae-b088-c043a0895e2c",
+      "name": "Criar Cliente forms 2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        416,
+        -384
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/webhook/contrato",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer dev-local-secret-troque-em-producao"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "nome",
+              "value": "={{ $('Extrair Campos forms 2').item.json.tipoDocumento }} - {{ $('Extrair Campos forms 2').item.json.nome }}"
+            },
+            {
+              "name": "categoria",
+              "value": "={{ $('Extrair Campos forms 2').item.json.tipoDocumento }}"
+            },
+            {
+              "name": "clienteId",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "empreendimentoId",
+              "value": "={{ $('Extrair Campos forms 2').item.json.empreendimentoId }}"
+            },
+            {
+              "name": "unidadeNumero",
+              "value": "={{ $('Extrair Campos forms 2').item.json.unidadeNumero }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "df101cbd-537b-4f71-a6f6-41b8df9e2b5c",
+      "name": "Criar contrato forms 2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        672,
+        -384
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/webhook/documento",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer dev-local-secret-troque-em-producao"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  documento: $('Extrair Campos forms 2').item.json.documento,\n  empreendimentoId: $('Extrair Campos forms 2').item.json.empreendimentoId,\n  unidadeNumero: $('Extrair Campos forms 2').item.json.unidadeNumero,\n  clienteId: $('Criar Cliente forms 2').item.json.id,\n  contratoId: $json.id\n}) }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0000-4000-8000-000000000001",
+      "name": "Gerar Documento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        928,
+        -384
+      ]
+    }
+  ],
+  "pinData": {
+    "Executar manualmente": [
+      {
+        "json": {
+          "Carimbo de data/hora": "06/08/2026 09:30:00",
+          "Qual documento você deseja gerar?": "1. Contrato de Promessa de Compra e Venda",
+          "Data do documento": "06/08/2026",
+          "Cidade/UF da assinatura - ex:(Aracruz/ES)": "Aracruz/ES",
+          "Responsável interno pelo preenchimento": "Marcelo",
+          "Nome completo do comprador": "Carlos Andrade Pereira",
+          "CPF do comprador": "111.222.333-44",
+          "Nacionalidade do comprador": "brasileiro",
+          "Estado civil do comprador": "casado",
+          "Profissão do comprador": "engenheiro",
+          "RG do comprador": "1234567",
+          "Órgão emissor do RG do comprador": "SSP/ES",
+          "Endereço completo do comprador": "Rua das Flores, 100, Centro, Aracruz/ES",
+          "CEP do comprador": "29190-000",
+          "Telefone com DDD do comprador": "(27) 99999-0000",
+          "E-mail do comprador": "carlos.andrade@email.com",
+          "O comprador possui cônjuge que deve constar no documento?": "Sim",
+          "Nome completo do cônjuge": "Ana Andrade Pereira",
+          "CPF do cônjuge": "555.666.777-88",
+          "Nacionalidade do cônjuge": "brasileira",
+          "Profissão do cônjuge": "advogada",
+          "RG do cônjuge": "7654321",
+          "Órgão emissor do RG do cônjuge": "SSP/ES",
+          "Nome da testemunha 1": "Joana Ribeiro",
+          "CPF da testemunha 1": "999.888.777-66",
+          "Nome da testemunha 2": "Pedro Nunes",
+          "CPF da testemunha 2": "444.333.222-11",
+          "Tipo da unidade - ex:(apartamento)": "apartamento",
+          "Número da unidade": "1002",
+          "Número da unidade por extenso": "mil e dois",
+          "Quantidade de vagas de garagem": "01",
+          "Área privativa (m²)": "93,89",
+          "Preço total do imóvel (R$)": "R$ 733.000,00",
+          "Preço total por extenso": "setecentos e trinta e três mil reais",
+          "Quantos tipos de parcelas existem nesta negociação?": "4",
+          "Tipo da parcela 1": "Sinal",
+          "Data inicial de vencimento da parcela 1": "07/02/2026",
+          "Valor unitário da parcela 1": "R$ 53.000,00",
+          "Quantidade da parcela 1": "01",
+          "Percentual da parcela 1": "7,23%",
+          "A parcela 1 é reajustável?": "Não",
+          "Forma de pagamento da parcela 1": "Dinheiro",
+          "Tipo da parcela 2": "Mensais",
+          "Data inicial de vencimento da parcela 2": "27/02/2026",
+          "Valor unitário da parcela 2": "R$ 10.000,00",
+          "Quantidade da parcela 2": "08",
+          "Percentual da parcela 2": "10,92%",
+          "A parcela 2 é reajustável?": "Não",
+          "Forma de pagamento da parcela 2": "Dinheiro",
+          "Tipo da parcela 3": "Mensais",
+          "Data inicial de vencimento da parcela 3": "27/02/2027",
+          "Valor unitário da parcela 3": "R$ 10.000,00",
+          "Quantidade da parcela 3": "17",
+          "Percentual da parcela 3": "23,19%",
+          "A parcela 3 é reajustável?": "Sim",
+          "Índice da parcela 3": "INCC",
+          "Forma de pagamento da parcela 3": "Dinheiro",
+          "Tipo da parcela 4": "Chaves",
+          "Data inicial de vencimento da parcela 4": "27/06/2028",
+          "Valor unitário da parcela 4": "R$ 350.000,00",
+          "Quantidade da parcela 4": "01",
+          "Percentual da parcela 4": "47,75%",
+          "A parcela 4 é reajustável?": "Sim",
+          "Índice da parcela 4": "INCC",
+          "Forma de pagamento da parcela 4": "Apartamento"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Executar manualmente": {
+      "main": [
+        [
+          {
+            "node": "Extrair Campos forms 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair Campos forms 2": {
+      "main": [
+        [
+          {
+            "node": "Criar Cliente forms 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar Cliente forms 2": {
+      "main": [
+        [
+          {
+            "node": "Criar contrato forms 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar contrato forms 2": {
+      "main": [
+        [
+          {
+            "node": "Gerar Documento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

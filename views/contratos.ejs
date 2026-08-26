@@ -7,6 +7,20 @@
   <p>Geração e acompanhamento de operações contratuais.</p>
 </section>
 
+<% if (typeof aproveitados !== 'undefined' && aproveitados > 0) { %>
+  <div class="empty-state" style="color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:16px;">
+    <%= aproveitados %>
+    <%= aproveitados === 1 ? 'documento que já existia foi aproveitado' : 'documentos que já existiam foram aproveitados' %>
+    nesta operação — o formulário já tinha sido preenchido antes.
+  </div>
+<% } %>
+
+<% if (typeof anexado !== 'undefined' && anexado) { %>
+  <div class="empty-state" style="color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:16px;">
+    Documento anexado. O item deixou de aparecer como aguardando.
+  </div>
+<% } %>
+
 <!-- BLOCO A: Iniciar nova operação -->
 <div class="form-card" style="margin-bottom: 32px;">
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -98,6 +112,9 @@
             <span class="op-status <%= op.statusGeral === 'Concluído' ? 'op-status-concluido' : 'op-status-andamento' %>">
               <%= op.statusGeral %>
             </span>
+            <div style="color:#6b7280;font-size:11px;margin-top:4px;">
+              <%= op.concluidos %> de <%= op.total %> prontos<%= op.aguardando > 0 ? ` · ${op.aguardando} aguardando` : '' %>
+            </div>
           </td>
           <td>
             <button
@@ -109,20 +126,71 @@
         </tr>
         <tr id="detalhes-<%= idx %>" style="display: none;">
           <td colspan="6" style="background: #f8fafc; padding: 0;">
+            <% if (op.aguardando > 0) { %>
+              <div style="padding:14px 18px;background:#fffbeb;border-bottom:1px solid #fde68a;color:#92400e;font-size:14px;">
+                <strong><%= op.aguardando %></strong>
+                <%= op.aguardando === 1 ? 'documento ainda aguarda' : 'documentos ainda aguardam' %>
+                os dados do comprador. Há dois caminhos:
+                <a href="<%= formLink %>" target="_blank" rel="noopener noreferrer">enviar o formulário</a>
+                para preenchimento, ou
+                <a href="/documentos/enviar?cliente=<%= op.clienteId %>">anexar o documento já assinado</a>.
+              </div>
+            <% } %>
             <table style="box-shadow: none; border-radius: 0; margin: 0;">
               <thead>
                 <tr>
                   <th>Documento</th>
-                  <th>Categoria</th>
-                  <th>Status</th>
+                  <th>Situação</th>
+                  <th>Arquivo</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
                 <% op.contratos.forEach(c => { %>
+                  <%
+                    const paleta = {
+                      amarelo: ['#fffbeb', '#92400e', '#fde68a'],
+                      azul:    ['#eff6ff', '#1d4ed8', '#bfdbfe'],
+                      verde:   ['#f0fdf4', '#166534', '#bbf7d0'],
+                      cinza:   ['#f3f4f6', '#4b5563', '#e5e7eb']
+                    };
+                    const [bg, fg, bd] = paleta[c.statusCor] || paleta.cinza;
+                  %>
                   <tr>
-                    <td><%= c.nome %></td>
-                    <td><%= c.categoria %></td>
-                    <td><%= c.statusLabel %></td>
+                    <td>
+                      <%= c.nome %>
+                      <% if (c.categoria) { %>
+                        <div style="color:#9ca3af;font-size:11px;"><%= c.categoria %></div>
+                      <% } %>
+                    </td>
+                    <td>
+                      <span style="background:<%= bg %>;color:<%= fg %>;border:1px solid <%= bd %>;font-size:12px;padding:3px 8px;border-radius:4px;white-space:nowrap;">
+                        <%= c.statusLabel %>
+                      </span>
+                      <% if (c.statusExplica) { %>
+                        <div style="color:#6b7280;font-size:11px;margin-top:4px;max-width:280px;"><%= c.statusExplica %></div>
+                      <% } %>
+                    </td>
+                    <td>
+                      <% if (c.documento && c.documento.disponivel) { %>
+                        <a class="button" style="font-size:12px;padding:5px 10px;"
+                           href="<%= c.documento.caminho %>" download>Baixar</a>
+                        <div style="color:#9ca3af;font-size:11px;margin-top:4px;">
+                          <%= c.documento.origem === 'enviado' ? 'enviado pela equipe' : 'gerado pelo sistema' %>
+                        </div>
+                      <% } else if (c.status === 'pendente') { %>
+                        <a class="button secondary" style="font-size:12px;padding:5px 10px;"
+                           href="/documentos/enviar?cliente=<%= c.clienteId %>&contrato=<%= c.id %>">Anexar</a>
+                      <% } else { %>
+                        <span style="color:#9ca3af;font-size:12px;">—</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <form action="/contratos/<%= c.id %>/excluir" method="POST" class="inline-form"
+                            onsubmit="return confirm('Excluir este contrato? Os lançamentos financeiros dele também serão removidos.');">
+                        <button type="submit" class="button danger" style="font-size:12px;padding:5px 10px;">Excluir</button>
+                      </form>
+                    </td>
                   </tr>
                 <% }) %>
               </tbody>

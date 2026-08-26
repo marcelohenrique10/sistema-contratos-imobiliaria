@@ -30,6 +30,28 @@
     <h3>Saídas</h3>
     <p class="big-number">R$ <%= totalSaidas.toLocaleString("pt-BR") %></p>
   </div>
+
+  <div class="card">
+    <h3>A vencer</h3>
+    <p class="big-number" style="color: #b45309;">R$ <%= totalPrevisto.toLocaleString("pt-BR") %></p>
+    <p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;">
+      Parcelas ainda no prazo
+    </p>
+  </div>
+
+  <div class="card">
+    <h3>Atrasado</h3>
+    <p class="big-number" style="color: <%= totalAtrasado > 0 ? '#b91c1c' : '#9ca3af' %>;">
+      R$ <%= totalAtrasado.toLocaleString("pt-BR") %>
+    </p>
+    <p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;">
+      <% if (totalAtrasado > 0) { %>
+        <a href="/financeiro?situacao=atrasado" style="color:#b91c1c;">Ver o que venceu</a>
+      <% } else { %>
+        Nada vencido em aberto
+      <% } %>
+    </p>
+  </div>
 </section>
 
 <section class="cards">

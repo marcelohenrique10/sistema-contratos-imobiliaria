@@ -1,0 +1,60 @@
+<%- include("partials/header") %>
+
+<section class="page-header">
+  <h2>Editar cliente</h2>
+  <p>Corrija os dados cadastrais. O CPF/CNPJ é o que liga este cliente às respostas do formulário.</p>
+</section>
+
+<% if (erro) { %>
+  <div class="empty-state" style="color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;margin-bottom:16px;">
+    <%= erro %>
+  </div>
+<% } %>
+
+<section class="form-card">
+  <form action="/clientes/<%= cliente.id %>" method="POST">
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="nome">Nome completo</label>
+        <input type="text" id="nome" name="nome" value="<%= cliente.nome %>" required />
+      </div>
+
+      <div class="form-group">
+        <label for="cpfCnpj">CPF ou CNPJ</label>
+        <input type="text" id="cpfCnpj" name="cpfCnpj" value="<%= cliente.cpfCnpj || '' %>" />
+        <small>Alterar este campo muda como o formulário reconhece o cliente.</small>
+      </div>
+
+      <div class="form-group">
+        <label for="telefone">Telefone</label>
+        <input type="text" id="telefone" name="telefone" value="<%= cliente.telefone || '' %>" />
+      </div>
+
+      <div class="form-group">
+        <label for="email">E-mail</label>
+        <input type="email" id="email" name="email" value="<%= cliente.email || '' %>" />
+      </div>
+
+      <div class="form-group">
+        <label for="tipo">Tipo</label>
+        <select id="tipo" name="tipo">
+          <% ['Comprador','Investidor','Permutante'].forEach(t => { %>
+            <option value="<%= t %>" <%= cliente.tipo === t ? 'selected' : '' %>><%= t %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group full">
+        <label for="observacoes">Observações</label>
+        <textarea id="observacoes" name="observacoes"><%= cliente.observacoes || '' %></textarea>
+      </div>
+    </div>
+
+    <div class="actions" style="margin-top:16px;">
+      <button type="submit" class="button">Salvar alterações</button>
+      <a class="button secondary" href="/clientes">Cancelar</a>
+    </div>
+  </form>
+</section>
+
+<%- include("partials/footer") %>

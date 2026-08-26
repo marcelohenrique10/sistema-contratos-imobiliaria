@@ -90,6 +90,70 @@ db.exec(`
   );
 `);
 
+// Dados da SPE do empreendimento: cada um é uma sociedade própria, com CNPJ
+// próprio, e aparece como VENDEDORA nos contratos. Adicionadas depois da
+// criação original da tabela, por isso via ALTER.
+const colunasEmpreendimento = db.prepare('PRAGMA table_info(empreendimentos)').all().map((c) => c.name);
+
+[
+  'razaoSocial',
+  'cnpj',
+  'socioAdmin',
+  'email',
+  'cep'
+].forEach((coluna) => {
+  if (!colunasEmpreendimento.includes(coluna)) {
+    db.exec(`ALTER TABLE empreendimentos ADD COLUMN ${coluna} TEXT`);
+  }
+});
+
+// Lançamentos gerados a partir das parcelas de um contrato nascem como
+// "previsto" — o dinheiro ainda não entrou. contratoId permite regerar o
+// cronograma sem duplicar.
+const colunasFinanceiro = db.prepare('PRAGMA table_info(financeiro)').all().map((c) => c.name);
+
+if (!colunasFinanceiro.includes('status')) {
+  db.exec("ALTER TABLE financeiro ADD COLUMN status TEXT DEFAULT 'recebido'");
+}
+if (!colunasFinanceiro.includes('contratoId')) {
+  db.exec('ALTER TABLE financeiro ADD COLUMN contratoId TEXT');
+}
+// Quando o recebimento foi confirmado. Guardar a data permite distinguir
+// "recebeu no prazo" de "recebeu atrasado" depois.
+if (!colunasFinanceiro.includes('dataRecebimento')) {
+  db.exec('ALTER TABLE financeiro ADD COLUMN dataRecebimento TEXT');
+}
+
+// Identificador da resposta do formulário (o carimbo de data/hora, único por
+// envio). Impede que reprocessar a mesma resposta crie contrato e documento
+// duplicados — o n8n pode reexecutar por falha de rede ou clique repetido.
+['contratos', 'documentos'].forEach((tabela) => {
+  const colunas = db.prepare(`PRAGMA table_info(${tabela})`).all().map((c) => c.name);
+  if (!colunas.includes('respostaId')) {
+    db.exec(`ALTER TABLE ${tabela} ADD COLUMN respostaId TEXT`);
+  }
+});
+
+// Distingue o que o sistema gerou do que alguém enviou de fora.
+const colunasDocumentos = db.prepare('PRAGMA table_info(documentos)').all().map((c) => c.name);
+if (!colunasDocumentos.includes('origem')) {
+  db.exec("ALTER TABLE documentos ADD COLUMN origem TEXT DEFAULT 'gerado'");
+}
+if (!colunasDocumentos.includes('nomeOriginal')) {
+  db.exec('ALTER TABLE documentos ADD COLUMN nomeOriginal TEXT');
+}
+// Qual contrato este arquivo satisfaz. Sem isso, a tela de Contratos não tem
+// como mostrar o documento de cada item da operação.
+if (!colunasDocumentos.includes('contratoId')) {
+  db.exec('ALTER TABLE documentos ADD COLUMN contratoId TEXT');
+}
+// Quais campos do modelo ficaram em branco neste documento, em JSON. Guardar
+// permite responder a verdade quando a mesma resposta é reprocessada — sem
+// isso o aviso sairia dizendo "nenhum campo em branco" sem ter conferido.
+if (!colunasDocumentos.includes('camposSemValor')) {
+  db.exec('ALTER TABLE documentos ADD COLUMN camposSemValor TEXT');
+}
+
 // Seed empreendimentos
 if (db.prepare('SELECT COUNT(*) as n FROM empreendimentos').get().n === 0) {
   const ins = db.prepare(

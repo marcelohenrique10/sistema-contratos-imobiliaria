@@ -34,6 +34,32 @@
         <textarea id="descricao" name="descricao"></textarea>
       </div>
 
+      <div class="form-group full">
+        <label for="razaoSocial">Razão social da SPE</label>
+        <input type="text" id="razaoSocial" name="razaoSocial" placeholder="HIGH TOWER EMPREENDIMENTO IMOBILIÁRIO SPE LTDA" />
+        <small>Usada como VENDEDORA nos contratos gerados.</small>
+      </div>
+
+      <div class="form-group">
+        <label for="cnpj">CNPJ da SPE</label>
+        <input type="text" id="cnpj" name="cnpj" placeholder="00.000.000/0001-00" />
+      </div>
+
+      <div class="form-group">
+        <label for="cep">CEP da SPE</label>
+        <input type="text" id="cep" name="cep" placeholder="29190-000" />
+      </div>
+
+      <div class="form-group">
+        <label for="socioAdmin">Sócio administrador</label>
+        <input type="text" id="socioAdmin" name="socioAdmin" />
+      </div>
+
+      <div class="form-group">
+        <label for="email">E-mail da SPE</label>
+        <input type="email" id="email" name="email" />
+      </div>
+
       <div class="form-group">
         <label for="memorialLink">Link do memorial</label>
         <input type="text" id="memorialLink" name="memorialLink" />
@@ -82,15 +108,10 @@
 
         <div class="actions">
           <a class="button" href="/empreendimentos/<%= empreendimento.id %>">Ver detalhes</a>
+          <a class="button secondary" href="/empreendimentos/<%= empreendimento.id %>/editar">Editar</a>
           <a class="button secondary" href="/espelho?empreendimento=<%= empreendimento.id %>">Ver espelho</a>
 
-          <form
-            action="/empreendimentos/<%= empreendimento.id %>/delete"
-            method="POST"
-            class="inline-form"
-          >
-            <button type="submit" class="button danger">Remover</button>
-          </form>
+          <a class="button danger" href="/empreendimentos/<%= empreendimento.id %>/excluir">Remover</a>
         </div>
       </div>
     <% }) %>

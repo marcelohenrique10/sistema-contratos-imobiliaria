@@ -1,0 +1,49 @@
+<%- include("partials/header") %>
+
+<section class="page-header">
+  <h2>Excluir cliente</h2>
+  <p>Confira o que será removido junto. Não há como desfazer.</p>
+</section>
+
+<section class="form-card">
+  <h3 style="margin:0 0 4px;"><%= cliente.nome %></h3>
+  <p style="margin:0 0 20px;color:#6b7280;font-size:14px;">
+    <%= cliente.cpfCnpj || 'sem CPF/CNPJ' %>
+  </p>
+
+  <%
+    const itens = [
+      ['contratos', impacto.contratos, 'contrato', 'contratos'],
+      ['documentos', impacto.documentos, 'documento gerado (o arquivo também será apagado)', 'documentos gerados (os arquivos também serão apagados)'],
+      ['recebiveis', impacto.recebiveis, 'lançamento no financeiro', 'lançamentos no financeiro']
+    ].filter(i => i[1] > 0);
+  %>
+
+  <% if (itens.length === 0 && impacto.unidades === 0) { %>
+    <div class="empty-state" style="margin-bottom:20px;">
+      Este cliente não tem nada vinculado. A exclusão remove apenas o cadastro.
+    </div>
+  <% } else { %>
+    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
+      <strong style="color:#b91c1c;">Será removido junto:</strong>
+      <ul style="margin:10px 0 0;padding-left:20px;color:#7f1d1d;">
+        <% itens.forEach(i => { %>
+          <li><strong><%= i[1] %></strong> <%= i[1] === 1 ? i[2] : i[3] %></li>
+        <% }) %>
+        <% if (impacto.unidades > 0) { %>
+          <li><strong><%= impacto.unidades %></strong>
+            <%= impacto.unidades === 1 ? 'unidade voltará a ficar livre' : 'unidades voltarão a ficar livres' %></li>
+        <% } %>
+      </ul>
+    </div>
+  <% } %>
+
+  <div class="actions">
+    <form action="/clientes/<%= cliente.id %>/excluir" method="POST" class="inline-form">
+      <button type="submit" class="button danger">Excluir definitivamente</button>
+    </form>
+    <a class="button secondary" href="/clientes">Cancelar</a>
+  </div>
+</section>
+
+<%- include("partials/footer") %>

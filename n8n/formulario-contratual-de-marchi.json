@@ -1,0 +1,296 @@
+{
+  "name": "formulario-contratual-de-marchi",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Código do nó \"Extrair Campos\" do n8n.\n// Fonte da verdade: este arquivo. O build injeta no workflow JSON.\n//\n// Lê uma linha da planilha de respostas e monta o payload que a aplicação\n// espera. Os títulos abaixo têm que bater exatamente com os do formulário\n// (ver forms/apps-script-formulario.gs).\n\nconst d = $input.item.json;\n\n// Lookup tolerante: ignora espaços/maiúsculas e sufixos _1/_2 que o n8n\n// acrescenta quando a planilha tem cabeçalhos repetidos.\nconst v = (campo) => {\n  const alvo = campo.trim().toLowerCase();\n  const candidatos = [];\n  for (const chave of Object.keys(d)) {\n    const k = chave.trim().toLowerCase();\n    if (k === alvo || k === `${alvo}_1` || k === `${alvo}_2`) {\n      candidatos.push(String(d[chave] ?? '').trim());\n    }\n  }\n  return candidatos.find((c) => c !== '') ?? '';\n};\n\nconst sim = (campo) => v(campo).toLowerCase().startsWith('s');\n\n// A lista suspensa pode vir com prefixo numérico (\"1. Contrato...\")\nconst tipo = v('Qual documento você deseja gerar?')\n  .replace(/^\\s*\\d+\\s*[.)-]\\s*/, '')\n  .trim();\n\nconst ehPessoaJuridica = v('O contratante é pessoa física ou jurídica?')\n  .toLowerCase()\n  .includes('jur');\n\n// ---------- Dados gerais ----------\nconst dadosGerais = {\n  dataHora: v('Carimbo de data/hora'),\n  dataDocumento: v('Data do documento'),\n  cidadeUf: v('Cidade/UF da assinatura - ex:(Aracruz/ES)'),\n  responsavel: v('Responsável interno pelo preenchimento'),\n};\n\n// ---------- Contratante ----------\n// Os modelos têm um único bloco de \"comprador\". Para pessoa jurídica a razão\n// social ocupa o lugar do nome e o CNPJ o do CPF; o representante legal vai\n// num bloco à parte.\nconst compradorPf = {\n  nome: v('Nome completo do comprador'),\n  cpf: v('CPF do comprador'),\n  nacionalidade: v('Nacionalidade do comprador'),\n  estadoCivil: v('Estado civil do comprador'),\n  profissao: v('Profissão do comprador'),\n  rg: v('RG do comprador'),\n  orgaoEmissorRg: v('Órgão emissor do RG do comprador'),\n  endereco: v('Endereço completo do comprador'),\n  cep: v('CEP do comprador'),\n  telefone: v('Telefone com DDD do comprador'),\n  email: v('E-mail do comprador'),\n};\n\nconst compradorPj = {\n  nome: v('Razão social do contratante'),\n  cpf: v('CNPJ do contratante'),\n  nacionalidade: '',\n  estadoCivil: '',\n  profissao: '',\n  rg: '',\n  orgaoEmissorRg: '',\n  endereco: v('Endereço completo do contratante PJ'),\n  cep: v('CEP do contratante PJ'),\n  telefone: v('Telefone com DDD do contratante PJ'),\n  email: v('E-mail do contratante PJ'),\n};\n\nconst comprador = ehPessoaJuridica ? compradorPj : compradorPf;\n\nconst representante = ehPessoaJuridica ? {\n  nome: v('Nome do representante legal'),\n  cpf: v('CPF do representante legal'),\n  rg: v('RG do representante legal'),\n  orgaoEmissorRg: v('Órgão emissor do RG do representante legal'),\n  nacionalidade: v('Nacionalidade do representante legal'),\n  profissao: v('Profissão do representante legal'),\n} : null;\n\n// ---------- Cônjuge ----------\nconst temConjuge = !ehPessoaJuridica\n  && sim('O comprador possui cônjuge que deve constar no documento?');\n\nconst conjuge = temConjuge ? {\n  nome: v('Nome completo do cônjuge'),\n  cpf: v('CPF do cônjuge'),\n  nacionalidade: v('Nacionalidade do cônjuge'),\n  profissao: v('Profissão do cônjuge'),\n  rg: v('RG do cônjuge'),\n  orgaoEmissorRg: v('Órgão emissor do RG do cônjuge'),\n} : null;\n\n// ---------- Testemunhas ----------\nconst testemunhas = [1, 2]\n  .map((n) => ({ nome: v(`Nome da testemunha ${n}`), cpf: v(`CPF da testemunha ${n}`) }))\n  .filter((t) => t.nome || t.cpf);\n\n// ---------- Intermediadora ----------\nconst intermediadora = sim('Existe construtora intermediadora nesta operação?') ? {\n  razaoSocial: v('Razão social da intermediadora'),\n  cnpj: v('CNPJ da intermediadora'),\n  creci: v('CRECI da intermediadora'),\n  endereco: v('Endereço completo da intermediadora'),\n  representante: v('Nome do representante da intermediadora'),\n} : null;\n\n// ---------- Unidade ----------\nconst unidade = {\n  tipo: v('Tipo da unidade - ex:(apartamento)'),\n  numero: v('Número da unidade'),\n  numeroExtenso: v('Número da unidade por extenso'),\n  vagasGaragem: v('Quantidade de vagas de garagem'),\n  numerosVagas: v('Números das vagas'),\n  areaPrivativa: v('Área privativa (m²)'),\n  areaConstrucao: v('Área de construção (m²)'),\n  fracaoIdeal: v('Fração ideal'),\n  descricaoPlanta: v('Descrição da planta - ex:( 3 quartos, 1 suíte, varanda gourmet...)'),\n};\n\n// ---------- Compra e venda ----------\nconst formaAquisicao = v('Forma de aquisição');\nconst aVista = formaAquisicao.toLowerCase().includes('vista');\n\nconst parcelas = [];\nif (!aVista) {\n  for (let n = 1; n <= 5; n++) {\n    const tipoParcela = v(`Tipo da parcela ${n}`);\n    if (!tipoParcela) continue;\n    parcelas.push({\n      numero: n,\n      tipo: tipoParcela,\n      vencimentoInicial: v(`Data inicial de vencimento da parcela ${n}`),\n      valorUnitario: v(`Valor unitário da parcela ${n}`),\n      quantidade: v(`Quantidade da parcela ${n}`),\n      percentual: v(`Percentual da parcela ${n}`),\n      reajustavel: v(`A parcela ${n} é reajustável?`),\n      indice: v(`Índice da parcela ${n}`),\n      formaPagamento: v(`Forma de pagamento da parcela ${n}`),\n    });\n  }\n}\n\nconst compraVenda = {\n  unidade,\n  precoTotal: v('Preço total do imóvel (R$)'),\n  precoExtenso: v('Preço total por extenso'),\n  formaAquisicao,\n  aVista,\n  qtdTiposParcelas: v('Quantos tipos de parcelas existem nesta negociação?'),\n  parcelas,\n  observacaoEspecial: sim('Existe alguma observação especial na negociação?')\n    ? v('Descreva a observação especial') : '',\n  descricaoPersonalizacao: sim('Existe personalização de unidade / ajuste comercial que precisa constar?')\n    ? v('Descreva a personalização / ajuste') : '',\n};\n\n// ---------- Empréstimo ----------\nconst emprestimo = {\n  dataCompromisso: v('Data do compromisso de compra e venda'),\n  nomePj: v('Nome da Pessoa Jurídica'),\n  cnpj: v('CNPJ da Pessoa Jurídica'),\n  endereco: v('Endereço completo da Pessoa Jurídica'),\n  cep: v('CEP da Pessoa Jurídica'),\n  enderecoImovel: v('Endereço do imóvel'),\n  residencia: v('Residência?'),\n};\n\n// ---------- SCP ----------\nconst scp = {\n  razaoSocial: v('Razão social do empreendimento'),\n  cnpj: v('CNPJ do empreendimento'),\n  enderecoEmpresa: v('Endereço completo da empresa'),\n  cepEmpresa: v('CEP da empresa'),\n  valorEntrada: v('Valor da Entrada'),\n  numeroUnidades: v('Número de Unidades'),\n};\n\n// ---------- Monta o bloco específico do tipo escolhido ----------\nconst blocosPorTipo = {\n  'Contrato de Promessa de Compra e Venda': { compraVenda },\n  'Anexo ao Contrato de Promessa de Compra e Venda': { anexo: { tipoUnidade: unidade.tipo, numeroUnidade: unidade.numero, numeroUnidadeExtenso: unidade.numeroExtenso } },\n  'Termo de Anuência com Outorga de Poderes': {},\n  'Termo de Ciência e Anuência para Empréstimo': { emprestimo },\n  'Termo de Adesão Preliminar SCP': { scp },\n};\n\nreturn [{\n  json: {\n    // Campos planos, usados por /webhook/cliente e /webhook/contrato\n    tipoDocumento: tipo,\n    nome: comprador.nome,\n    cpfCnpj: comprador.cpf,\n    telefone: comprador.telefone,\n    email: comprador.email,\n    responsavel: dadosGerais.responsavel,\n    dataHora: dadosGerais.dataHora,\n    pessoaJuridica: ehPessoaJuridica,\n\n    // A aplicação resolve o nome do empreendimento para o id interno\n    empreendimentoNome: v('Empreendimento'),\n    unidadeNumero: unidade.numero,\n\n    // Estruturado, para o gerador de documento\n    documento: {\n      tipo,\n      dadosGerais,\n      comprador,\n      representante,\n      conjuge,\n      testemunhas,\n      intermediadora,\n      ...(blocosPorTipo[tipo] ?? { compraVenda }),\n    },\n  },\n}];\n"
+      },
+      "id": "c9ca53bd-6730-4cd8-a3c3-895d5b9cecc2",
+      "name": "Extrair Campos forms 2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        -384
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "1R9L1kZuEQqniqsP_w0wDC_gEpbnqfdlFW3J1Vi7_9z4",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 468069889,
+          "mode": "list",
+          "cachedResultName": "Respostas ao formulário 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1R9L1kZuEQqniqsP_w0wDC_gEpbnqfdlFW3J1Vi7_9z4/edit#gid=468069889"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "id": "5ae13e7f-5c05-48d9-ae67-3be463891a4d",
+      "name": "Google Sheets",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        -384
+      ],
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "P4apZ0fKgdlGKVQT",
+          "name": "Google Sheets Trigger OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.APP_BASE_URL }}/webhook/cliente",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $vars.APP_WEBHOOK_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "nome",
+              "value": "={{ $json.nome }}"
+            },
+            {
+              "name": "cpfCnpj",
+              "value": "={{ $json.cpfCnpj }}"
+            },
+            {
+              "name": "telefone",
+              "value": "={{ $json.telefone }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "tipo",
+              "value": "Comprador"
+            },
+            {
+              "name": "observacoes",
+              "value": "={{ $json.tipoDocumento }} | Resp: {{ $json.responsavel }}"
+            },
+            {
+              "name": "empreendimentoNome",
+              "value": "={{ $json.empreendimentoNome }}"
+            },
+            {
+              "name": "unidadeNumero",
+              "value": "={{ $json.unidadeNumero }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7656eefc-1d16-4cae-b088-c043a0895e2c",
+      "name": "Criar Cliente forms 2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        416,
+        -384
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.APP_BASE_URL }}/webhook/contrato",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $vars.APP_WEBHOOK_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "nome",
+              "value": "={{ $('Extrair Campos forms 2').item.json.tipoDocumento }} - {{ $('Extrair Campos forms 2').item.json.nome }}"
+            },
+            {
+              "name": "categoria",
+              "value": "={{ $('Extrair Campos forms 2').item.json.tipoDocumento }}"
+            },
+            {
+              "name": "clienteId",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "empreendimentoNome",
+              "value": "={{ $('Extrair Campos forms 2').item.json.empreendimentoNome }}"
+            },
+            {
+              "name": "unidadeNumero",
+              "value": "={{ $('Extrair Campos forms 2').item.json.unidadeNumero }}"
+            },
+            {
+              "name": "respostaId",
+              "value": "={{ $('Extrair Campos forms 2').item.json.dataHora }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "df101cbd-537b-4f71-a6f6-41b8df9e2b5c",
+      "name": "Criar contrato forms 2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        672,
+        -384
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "marcelohenrique.one@gmail.com",
+        "subject": "={{ ($json.camposSemValor || []).length ? '[CONFERIR] ' : '' }}{{ $('Extrair Campos forms 2').item.json.tipoDocumento }} - {{ $('Extrair Campos forms 2').item.json.nome }}",
+        "message": "=<div style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827;line-height:1.5;\">\n{{ ($json.camposSemValor || []).length   ? '<div style=\"background:#fef2f2;border-left:4px solid #dc2626;padding:12px 16px;margin-bottom:16px;\">'     + '<strong style=\"color:#b91c1c;\">Confira antes de enviar para assinatura.</strong><br>'     + 'Este documento saiu com ' + $json.camposSemValor.length + ' campo(s) em branco.'     + '</div>'   : '<div style=\"background:#f0fdf4;border-left:4px solid #16a34a;padding:12px 16px;margin-bottom:16px;color:#166534;\">'     + 'Documento gerado sem campos em branco.'     + '</div>' }}\n{{ $json.jaProcessado   ? '<p style=\"margin:16px 0 0;padding:8px 12px;background:#f3f4f6;color:#4b5563;font-size:13px;\">'     + 'Esta resposta já tinha sido processada. O arquivo abaixo é o que já existia — nada foi gerado de novo.'     + '</p>'   : '' }}\n<table cellpadding=\"0\" cellspacing=\"0\" border=\"0\">\n<tr><td style=\"padding:2px 12px 2px 0;color:#6b7280;white-space:nowrap;\">Documento</td><td style=\"padding:2px 0;\"><strong>{{ $('Extrair Campos forms 2').item.json.tipoDocumento }}</strong></td></tr>\n<tr><td style=\"padding:2px 12px 2px 0;color:#6b7280;white-space:nowrap;\">Cliente</td><td style=\"padding:2px 0;\"><strong>{{ $('Extrair Campos forms 2').item.json.nome }}</strong></td></tr>\n<tr><td style=\"padding:2px 12px 2px 0;color:#6b7280;white-space:nowrap;\">Empreendimento</td><td style=\"padding:2px 0;\"><strong>{{ $('Extrair Campos forms 2').item.json.empreendimentoNome }}</strong></td></tr>\n<tr><td style=\"padding:2px 12px 2px 0;color:#6b7280;white-space:nowrap;\">Unidade</td><td style=\"padding:2px 0;\"><strong>{{ $('Extrair Campos forms 2').item.json.unidadeNumero }}</strong></td></tr>\n<tr><td style=\"padding:2px 12px 2px 0;color:#6b7280;white-space:nowrap;\">Responsável</td><td style=\"padding:2px 0;\"><strong>{{ $('Extrair Campos forms 2').item.json.responsavel }}</strong></td></tr>\n<tr><td style=\"padding:2px 12px 2px 0;color:#6b7280;white-space:nowrap;\">Preenchido em</td><td style=\"padding:2px 0;\"><strong>{{ $('Extrair Campos forms 2').item.json.dataHora }}</strong></td></tr>\n</table>\n<p style=\"margin:20px 0 0;\"><a href=\"{{ $vars.APP_BASE_URL }}{{ $json.arquivo }}\" style=\"color:#1d4ed8;\">Abrir o documento</a></p>\n{{ ($json.camposSemValor || []).length   ? '<p style=\"margin:20px 0 6px;\"><strong>Em branco</strong> (preencher à mão):</p>'     + '<ul style=\"margin:0;padding-left:20px;color:#b91c1c;\"><li>'     + $json.camposSemValor.join('</li><li>') + '</li></ul>'   : '' }}\n</div>",
+        "options": {
+          "appendAttribution": false
+        },
+        "emailType": "html"
+      },
+      "id": "206c62e8-b77a-488b-a25f-61b03deaa9ed",
+      "name": "Enviar Email forms 2",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        -384
+      ],
+      "webhookId": "8de2a612-ecb4-450f-898a-41f617ad6ac5",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Eg2PhhqcXXIH7Num",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.APP_BASE_URL }}/webhook/documento",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $vars.APP_WEBHOOK_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  documento: $('Extrair Campos forms 2').item.json.documento,\n  empreendimentoNome: $('Extrair Campos forms 2').item.json.empreendimentoNome,\n  unidadeNumero: $('Extrair Campos forms 2').item.json.unidadeNumero,\n  respostaId: $('Extrair Campos forms 2').item.json.dataHora,\n  clienteId: $('Criar Cliente forms 2').item.json.id,\n  contratoId: $json.id\n}) }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0000-4000-8000-000000000001",
+      "name": "Gerar Documento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        928,
+        -384
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Extrair Campos forms 2": {
+      "main": [
+        [
+          {
+            "node": "Criar Cliente forms 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Extrair Campos forms 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar Cliente forms 2": {
+      "main": [
+        [
+          {
+            "node": "Criar contrato forms 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar contrato forms 2": {
+      "main": [
+        [
+          {
+            "node": "Gerar Documento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar Documento": {
+      "main": [
+        [
+          {
+            "node": "Enviar Email forms 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "2844bc06-79d1-4ba5-9ea9-3084943a875f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c5539393e53e5e066148b44799960be99c1f7d67e2abe1b83042e8c42c449eda"
+  },
+  "nodeGroups": [],
+  "id": "LHZlNVD9RhbRtWJG",
+  "tags": []
+}
