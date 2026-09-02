@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const db = require('../database');
 
-const STORAGE = path.join(__dirname, '..', 'storage');
+const STORAGE = require('../caminhos').STORAGE;
 
 /**
  * Apaga o arquivo de um documento. Só remove o que está dentro de storage/,

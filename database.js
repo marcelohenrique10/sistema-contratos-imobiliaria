@@ -4,10 +4,13 @@ const path = require('path');
 const fs = require('fs');
 
 // Remove stale lock left by a previous crashed process
-const lockPath = path.join(__dirname, 'imobiliaria.db.lock');
+const caminhos = require('./caminhos');
+caminhos.garantirPastas();
+
+const lockPath = caminhos.BANCO + '.lock';
 try { fs.rmSync(lockPath, { recursive: true, force: true }); } catch (_) {}
 
-const db = new Database(path.join(__dirname, 'imobiliaria.db'));
+const db = new Database(caminhos.BANCO);
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS empreendimentos (

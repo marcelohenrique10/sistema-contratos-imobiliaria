@@ -4,7 +4,7 @@ const fs = require('fs');
 const db = require('../database');
 const unidades = require('./unidades');
 
-const STORAGE = path.join(__dirname, '..', 'storage', 'documentos');
+const STORAGE = path.join(require('../caminhos').STORAGE, 'documentos');
 
 // Só formatos de documento e imagem de digitalização. Nada executável.
 const EXTENSOES = ['.pdf', '.docx', '.doc', '.odt', '.jpg', '.jpeg', '.png'];
@@ -163,7 +163,7 @@ function contratosPendentes(clienteId) {
 
 function registrar({ vinculos, tipo, arquivo, contratoId }) {
   const caminhoPublico = '/storage/' + path
-    .relative(path.join(__dirname, '..', 'storage'), arquivo.path)
+    .relative(require('../caminhos').STORAGE, arquivo.path)
     .replace(/\\/g, '/');
 
   const cliente = db.prepare('SELECT nome FROM clientes WHERE id = ?').get(vinculos.clienteId);

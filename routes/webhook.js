@@ -25,22 +25,49 @@ function logWebhook(tipo, payload, status, erro = null) {
   ).run([tipo, JSON.stringify(payload), status, erro]);
 }
 
-// O formulário devolve o NOME do empreendimento ("High Tower Jardins"),
-// mas o sistema trabalha com o id ("high-tower").
+/** Tira acento, pontuação e espaço repetido — "High Tower Jardins" e
+ *  "high tower jardins." viram a mesma coisa. */
+function chave(texto) {
+  return String(texto || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/**
+ * O formulário devolve o NOME do empreendimento ("High Tower Jardins"), e o
+ * sistema trabalha com o id ("high-tower"). Como o campo é digitável, aceita
+ * variação de acento, caixa e pontuação — e, se ainda assim não bater, tenta
+ * por começo do nome, desde que sobre UM candidato.
+ *
+ * Nunca inventa: empreendimento sem razão social e CNPJ gera contrato sem
+ * parte vendedora, que é pior do que recusar.
+ */
 function resolverEmpreendimentoId({ empreendimentoId, empreendimentoNome }) {
   if (empreendimentoId) {
     const porId = db.prepare('SELECT id FROM empreendimentos WHERE id = ?').get(empreendimentoId);
     if (porId) return porId.id;
   }
 
-  const nome = (empreendimentoNome || empreendimentoId || '').trim();
-  if (!nome) return null;
+  const bruto = (empreendimentoNome || empreendimentoId || '').trim();
+  if (!bruto) return null;
 
-  const porNome = db.prepare(
-    'SELECT id FROM empreendimentos WHERE LOWER(TRIM(nome)) = LOWER(TRIM(?))'
-  ).get(nome);
+  const alvo = chave(bruto);
+  const todos = db.prepare('SELECT id, nome FROM empreendimentos').all();
 
-  return porNome ? porNome.id : null;
+  const exato = todos.find((e) => chave(e.nome) === alvo);
+  if (exato) return exato.id;
+
+  // "High Tower" deve achar "High Tower Jardins" — mas só se não houver dois
+  // empreendimentos começando igual.
+  const parciais = todos.filter((e) => chave(e.nome).startsWith(alvo) || alvo.startsWith(chave(e.nome)));
+  return parciais.length === 1 ? parciais[0].id : null;
+}
+
+/** Os nomes aceitos, para a mensagem de erro dizer o que fazer. */
+function nomesDeEmpreendimentos() {
+  return db.prepare('SELECT nome FROM empreendimentos ORDER BY nome').all().map((e) => e.nome);
 }
 
 // O formulário informa o número da unidade ("1001"), não o id do banco.
@@ -234,6 +261,17 @@ router.post('/documento', checkAuth, async (req, res) => {
   if (!documento || !documento.tipo) {
     logWebhook('documento', req.body, 'erro', 'Payload sem documento.tipo');
     return res.status(400).json({ sucesso: false, erro: 'Payload sem documento.tipo' });
+  }
+
+  // Empreendimento que o sistema não conhece já gerou contrato sem razão
+  // social, sem CNPJ e sem endereço da vendedora — e respondendo "sucesso".
+  // Recusar alto é melhor: o nó do n8n fica vermelho e alguém percebe.
+  if (!empreendimentoId) {
+    const informado = (req.body.empreendimentoNome || '').trim() || '(vazio)';
+    const erro = `Empreendimento "${informado}" não existe no sistema. `
+      + `Cadastre-o antes, ou use um destes: ${nomesDeEmpreendimentos().join(', ')}.`;
+    logWebhook('documento', req.body, 'erro', erro);
+    return res.status(400).json({ sucesso: false, erro });
   }
 
   try {

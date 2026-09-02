@@ -11,6 +11,7 @@ const upload = require('../services/upload');
 const retroativo = require('../services/retroativo');
 const reservas = require('../services/reservas');
 const formato = require('../services/formato');
+const caminhos = require('../caminhos');
 
 /**
  * Endereço PÚBLICO do formulário — o de "/forms/d/e/.../viewform".
@@ -23,6 +24,39 @@ const formato = require('../services/formato');
  */
 const FORM_URL = process.env.FORM_URL
   || 'https://docs.google.com/forms/d/e/1FAIpQLSeqABI1z4kCqJUjv9gK3hc45BldUVBJcCjNiT13FyY2tF_V5Q/viewform';
+
+/**
+ * Identificadores dos campos do Google Forms, para mandar o formulário já
+ * preenchido. Pegam-se uma vez na interface do formulário, em
+ * "Obter link pré-preenchido" — os `entry.NNNN` aparecem na URL gerada.
+ *
+ * Sem eles configurados, o botão continua funcionando: leva ao formulário em
+ * branco. É o que evita o menu suspenso precisar de sincronização — o valor
+ * vem do sistema, então empreendimento novo funciona sem ninguém editar nada.
+ */
+const FORM_CAMPOS = {
+  empreendimento: process.env.FORM_ENTRY_EMPREENDIMENTO,
+  unidade: process.env.FORM_ENTRY_UNIDADE,
+  tipoDocumento: process.env.FORM_ENTRY_TIPO_DOCUMENTO
+};
+
+function linkDoFormulario(contrato) {
+  const base = contrato.formLink || FORM_URL;
+  const params = new URLSearchParams();
+
+  const juntar = (entrada, valor) => {
+    if (entrada && valor) params.set(entrada, String(valor));
+  };
+
+  juntar(FORM_CAMPOS.empreendimento, contrato.empreendimentoNome);
+  juntar(FORM_CAMPOS.unidade, contrato.unidadeNumero);
+  juntar(FORM_CAMPOS.tipoDocumento, contrato.nome);
+
+  if (![...params.keys()].length) return base;
+
+  params.set('usp', 'pp_url');
+  return `${base}?${params}`;
+}
 
 /**
  * O que o corretor pode fazer. É lista de permissões, não de bloqueios: rota
@@ -59,7 +93,7 @@ router.use((req, res, next) => {
 });
 
 function criarEstruturaDocumentos(empreendimentoId) {
-  const basePath = path.join(__dirname, '..', 'storage', 'documentos', empreendimentoId);
+  const basePath = path.join(caminhos.STORAGE, 'documentos', empreendimentoId);
   const pastas = [
     basePath,
     path.join(basePath, 'contratos'),
@@ -125,7 +159,7 @@ router.get('/documentos', (req, res) => {
     // Os registros de exemplo apontam para arquivos que nunca existiram.
     // Só oferece download do que estiver mesmo no disco.
     const relativo = String(doc.caminho || '').replace(/^\/storage\//, '');
-    const disponivel = Boolean(relativo) && fs.existsSync(path.join(__dirname, '..', 'storage', relativo));
+    const disponivel = Boolean(relativo) && fs.existsSync(path.join(caminhos.STORAGE, relativo));
     return { ...doc, disponivel };
   });
   res.render('documentos', { documentos, enviado: Boolean(req.query.enviado) });
@@ -600,13 +634,21 @@ router.get('/contratos', (req, res) => {
     SELECT id, contratoId, caminho, origem, nome, data FROM documentos WHERE contratoId IS NOT NULL
   `).all().forEach((d) => {
     const relativo = String(d.caminho || '').replace(/^\/storage\//, '');
-    documentosPorContrato[d.contratoId] = { ...d, disponivel: Boolean(relativo) && fs.existsSync(path.join(__dirname, '..', 'storage', relativo)) };
+    documentosPorContrato[d.contratoId] = { ...d, disponivel: Boolean(relativo) && fs.existsSync(path.join(caminhos.STORAGE, relativo)) };
   });
   const contratosEnriquecidos = db.prepare(`
     SELECT ct.*, cl.nome as clienteNome, e.nome as empreendimentoNome, u.numero as unidadeNumero FROM contratos ct LEFT JOIN clientes cl ON ct.clienteId = cl.id LEFT JOIN empreendimentos e ON ct.empreendimentoId = e.id LEFT JOIN unidades u ON ct.unidadeId = u.id
   `).all().map((c) => {
     const s = situacoes[c.status] || { rotulo: c.status, explica: '', cor: 'cinza' };
-    return { ...c, statusLabel: s.rotulo, statusExplica: s.explica, statusCor: s.cor, documento: documentosPorContrato[c.id] || null };
+    return {
+      ...c,
+      statusLabel: s.rotulo,
+      statusExplica: s.explica,
+      statusCor: s.cor,
+      documento: documentosPorContrato[c.id] || null,
+      // Já leva empreendimento, unidade e tipo preenchidos
+      formLink: linkDoFormulario(c)
+    };
   });
   const operacoesMap = {};
   contratosEnriquecidos.forEach((c) => {

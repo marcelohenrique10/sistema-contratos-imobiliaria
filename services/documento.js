@@ -4,7 +4,8 @@ const { execFile } = require('child_process');
 const docx = require('./docx');
 
 const TEMPLATES_DIR = path.join(__dirname, '..', 'templates');
-const STORAGE_DIR = path.join(__dirname, '..', 'storage', 'documentos');
+const caminhos = require('../caminhos');
+const STORAGE_DIR = path.join(caminhos.STORAGE, 'documentos');
 
 // Nome do tipo escolhido no formulário -> arquivo de modelo
 const MODELOS = {
@@ -333,7 +334,7 @@ async function gerarDocumento({ documento, empreendimento, empreendimentoId, uni
   }
 
   const relativo = path
-    .relative(path.join(__dirname, '..', 'storage'), caminhoFinal)
+    .relative(caminhos.STORAGE, caminhoFinal)
     .replace(/\\/g, '/');
 
   const { faltando, naoSeAplica } = conferirPreenchimento(valores, xml, documento);
