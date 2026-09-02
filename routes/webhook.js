@@ -3,6 +3,8 @@ const router = express.Router();
 const db = require('../database');
 const { gerarDocumento } = require('../services/documento');
 const { registrarRecebiveis } = require('../services/recebiveis');
+const usuarios = require('../services/usuarios');
+const formato = require('../services/formato');
 
 function checkAuth(req, res, next) {
   if (!process.env.WEBHOOK_SECRET) {
@@ -72,8 +74,14 @@ function lerCamposSemValor(guardado) {
 }
 
 router.post('/cliente', checkAuth, (req, res) => {
-  const { nome, cpfCnpj, telefone, email, tipo, observacoes, unidadeNumero } = req.body;
+  const { nome, telefone, email, tipo, observacoes, unidadeNumero } = req.body;
   const empreendimentoId = resolverEmpreendimentoId(req.body);
+  const cpfCnpj = formato.formatarCpfCnpj(req.body.cpfCnpj);
+
+  // "Responsável interno pelo preenchimento" vira o dono do cliente. Nome
+  // que não casa com nenhum usuário deixa o cliente sem dono — e aí só o
+  // administrador enxerga o contato dele.
+  const responsavel = usuarios.porNomeAproximado(req.body.responsavel);
 
   if (!nome) {
     logWebhook('cliente', req.body, 'erro', 'Campo obrigatório ausente: nome');
@@ -84,8 +92,12 @@ router.post('/cliente', checkAuth, (req, res) => {
     const unidadeId = resolverUnidadeId({ unidadeId: req.body.unidadeId, unidadeNumero, empreendimentoId });
 
     // Reenvio da mesma resposta do formulário não deve duplicar o cliente.
+    // Compara só os dígitos: o cadastro manual grava pontuado, e respostas
+    // antigas do formulário podem ter vindo sem pontuação.
     const existente = cpfCnpj
-      ? db.prepare('SELECT id FROM clientes WHERE cpfCnpj = ?').get(cpfCnpj)
+      ? db.prepare(
+          "SELECT id FROM clientes WHERE REPLACE(REPLACE(REPLACE(cpfCnpj,'.',''),'-',''),'/','') = ?"
+        ).get(formato.somenteDigitos(cpfCnpj))
       : null;
 
     let clienteId;
@@ -95,8 +107,8 @@ router.post('/cliente', checkAuth, (req, res) => {
       logWebhook('cliente', req.body, 'sucesso', 'Cliente já existente, reaproveitado');
     } else {
       const result = db.prepare(
-        'INSERT INTO clientes (nome, cpfCnpj, telefone, email, tipo, observacoes, empreendimentoId, unidadeId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-      ).run([nome, cpfCnpj || null, telefone || null, email || null, tipo || 'Comprador', observacoes || null, empreendimentoId || null, unidadeId]);
+        'INSERT INTO clientes (nome, cpfCnpj, telefone, email, tipo, observacoes, empreendimentoId, unidadeId, criadoPor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      ).run([nome, cpfCnpj, telefone || null, email || null, tipo || 'Comprador', observacoes || null, empreendimentoId || null, unidadeId, responsavel ? responsavel.id : null]);
 
       clienteId = Number(result.lastInsertRowid);
       logWebhook('cliente', req.body, 'sucesso');

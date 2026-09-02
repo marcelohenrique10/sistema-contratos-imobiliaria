@@ -1,0 +1,23 @@
+<%- include("partials/header") %>
+
+<div class="page-header">
+  <h2>Essa área é do administrador</h2>
+  <p>Seu acesso é de corretor, e ele não alcança esta parte do sistema.</p>
+</div>
+
+<div class="empty-state" style="text-align:left;background:#fffbeb;border:1px solid #fde68a;color:#92400e;">
+  <p style="margin:0 0 10px;">
+    Se você precisa mesmo entrar aqui, peça a um administrador — são eles que
+    definem quem acessa o quê.
+  </p>
+  <p style="margin:0;font-size:13px;color:#a16207;">
+    Área solicitada: <code><%= area %></code>
+  </p>
+</div>
+
+<div class="actions" style="margin-top:20px;">
+  <a class="button" href="/espelho">Ir para o espelho</a>
+  <a class="button secondary" href="/contratos">Ver contratos</a>
+</div>
+
+<%- include("partials/footer") %>

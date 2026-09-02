@@ -80,6 +80,16 @@ db.exec(`
     data TEXT
   );
 
+  CREATE TABLE IF NOT EXISTS usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    login TEXT NOT NULL UNIQUE,
+    senhaHash TEXT NOT NULL,
+    papel TEXT NOT NULL DEFAULT 'corretor',
+    ativo INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS webhook_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     tipo TEXT NOT NULL,
@@ -154,6 +164,44 @@ if (!colunasDocumentos.includes('camposSemValor')) {
   db.exec('ALTER TABLE documentos ADD COLUMN camposSemValor TEXT');
 }
 
+// Quem cadastrou o cliente. O corretor vê a lista inteira, mas telefone e
+// e-mail só dos que ele mesmo trouxe — carteira de um é ativo do outro.
+const colunasClientes = db.prepare('PRAGMA table_info(clientes)').all().map((c) => c.name);
+if (!colunasClientes.includes('criadoPor')) {
+  db.exec('ALTER TABLE clientes ADD COLUMN criadoPor INTEGER');
+}
+
+// Quem reservou a unidade e quando. Sem isso, "quem chegou primeiro" — que é
+// disputa de comissão — não tem resposta.
+const colunasUnidades = db.prepare('PRAGMA table_info(unidades)').all().map((c) => c.name);
+if (!colunasUnidades.includes('reservadoPor')) {
+  db.exec('ALTER TABLE unidades ADD COLUMN reservadoPor INTEGER');
+}
+if (!colunasUnidades.includes('reservadoEm')) {
+  db.exec('ALTER TABLE unidades ADD COLUMN reservadoEm TEXT');
+}
+
+// Primeiro administrador. Reaproveita a senha que já estava em uso para
+// ninguém ficar de fora do sistema depois da migração.
+if (db.prepare('SELECT COUNT(*) as n FROM usuarios').get().n === 0) {
+  const crypto = require('crypto');
+  const senha = process.env.APP_SENHA;
+
+  if (senha) {
+    const sal = crypto.randomBytes(16).toString('hex');
+    const hash = `${sal}:${crypto.scryptSync(senha, sal, 64).toString('hex')}`;
+    const login = (process.env.APP_ADMIN_LOGIN || 'admin').trim().toLowerCase();
+
+    db.prepare(
+      "INSERT INTO usuarios (nome, login, senhaHash, papel, ativo) VALUES (?, ?, ?, 'admin', 1)"
+    ).run(['Administrador', login, hash]);
+
+    console.log(`Usuário administrador criado: login "${login}", com a senha de APP_SENHA.`);
+  } else {
+    console.warn('Nenhum usuário existe e APP_SENHA não está definido — ninguém consegue entrar.');
+  }
+}
+
 // Seed empreendimentos
 if (db.prepare('SELECT COUNT(*) as n FROM empreendimentos').get().n === 0) {
   const ins = db.prepare(
@@ -199,10 +247,16 @@ if (db.prepare('SELECT COUNT(*) as n FROM contratos').get().n === 0) {
   ins.run(['permuta', 'Contrato de Permuta', 'Permuta', 'Permuta de terreno por unidades futuras.', '#', 'disponivel', 'reserva-verde', null, 2]);
 }
 
-// Corrige contratos com formLink placeholder
-db.prepare(
-  "UPDATE contratos SET formLink = 'https://docs.google.com/forms/d/10F6hk-zWLtZkzk2Xhnn-X1Tu5q2UVh9WXmlBOfu_5EU/viewform' WHERE formLink = '#' OR formLink IS NULL"
-).run();
+// O endereço "/forms/d/<id>/viewform" só abre para quem tem permissão no
+// documento — corretor caía em acesso negado. O público é "/forms/d/e/.../".
+// Corrige tanto os que ficaram com '#' quanto os que guardaram o link errado.
+const FORM_PUBLICO = process.env.FORM_URL
+  || 'https://docs.google.com/forms/d/e/1FAIpQLSeqABI1z4kCqJUjv9gK3hc45BldUVBJcCjNiT13FyY2tF_V5Q/viewform';
+
+db.prepare(`
+  UPDATE contratos SET formLink = ?
+  WHERE formLink IS NULL OR formLink = '#' OR formLink LIKE '%/forms/d/1%'
+`).run(FORM_PUBLICO);
 
 // Seed financeiro
 if (db.prepare('SELECT COUNT(*) as n FROM financeiro').get().n === 0) {

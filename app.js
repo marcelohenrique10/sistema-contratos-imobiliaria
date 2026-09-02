@@ -4,6 +4,7 @@ const path = require('path');
 const pagesRouter = require('./routes/pages');
 const webhookRouter = require('./routes/webhook');
 const authRouter = require('./routes/auth');
+const usuariosRouter = require('./routes/usuarios');
 const { exigirLogin } = require('./services/auth');
 
 const app = express();
@@ -36,6 +37,10 @@ app.use('/', authRouter);
 // Os documentos gerados contêm CPF, RG e endereço dos compradores.
 // Nunca podem ser servidos sem sessão.
 app.use('/storage', exigirLogin, express.static(path.join(__dirname, 'storage')));
+
+// Gestão de usuários é do administrador — o próprio router exige o papel.
+// Montado no caminho, e não em '/', senão o exigirAdmin dele barraria tudo.
+app.use('/usuarios', exigirLogin, usuariosRouter);
 
 app.use('/', exigirLogin, pagesRouter);
 

@@ -9,6 +9,54 @@ const unidades = require('../services/unidades');
 const financeiro = require('../services/financeiro');
 const upload = require('../services/upload');
 const retroativo = require('../services/retroativo');
+const reservas = require('../services/reservas');
+const formato = require('../services/formato');
+
+/**
+ * Endereço PÚBLICO do formulário — o de "/forms/d/e/.../viewform".
+ *
+ * Existe também um endereço com o id do documento ("/forms/d/<id>/viewform"),
+ * que só abre para quem tem permissão no formulário. Era esse que estava sendo
+ * gravado nos contratos, então o corretor caía em acesso negado.
+ *
+ * Fica em variável de ambiente para trocar de formulário sem mexer no código.
+ */
+const FORM_URL = process.env.FORM_URL
+  || 'https://docs.google.com/forms/d/e/1FAIpQLSeqABI1z4kCqJUjv9gK3hc45BldUVBJcCjNiT13FyY2tF_V5Q/viewform';
+
+/**
+ * O que o corretor pode fazer. É lista de permissões, não de bloqueios: rota
+ * nova nasce restrita ao administrador até alguém decidir o contrário. Errar
+ * fechando é recuperável; errar abrindo expõe o financeiro.
+ */
+const CORRETOR_PODE = [
+  ['GET', /^\/espelho$/],
+  ['GET', /^\/clientes$/],
+  ['GET', /^\/clientes\/\d+\/editar$/],
+  ['GET', /^\/contratos$/],
+  ['GET', /^\/documentos$/],
+  ['GET', /^\/documentos\/enviar$/],
+  ['GET', /^\/empreendimentos$/],
+  ['GET', /^\/empreendimentos\/[\w-]+$/],
+
+  ['POST', /^\/clientes$/],
+  ['POST', /^\/clientes\/\d+$/],
+  ['POST', /^\/contratos\/iniciar$/],
+  ['POST', /^\/documentos\/enviar$/],
+  ['POST', /^\/unidades\/\d+\/reservar$/],
+  ['POST', /^\/unidades\/\d+\/liberar$/]
+];
+
+router.use((req, res, next) => {
+  if (!req.usuario || req.usuario.papel === 'admin') return next();
+
+  const caminho = req.path.replace(/\/+$/, '') || '/';
+  const liberado = CORRETOR_PODE.some(([metodo, padrao]) => req.method === metodo && padrao.test(caminho));
+
+  if (liberado) return next();
+
+  return res.status(403).render('sem-permissao', { area: req.originalUrl });
+});
 
 function criarEstruturaDocumentos(empreendimentoId) {
   const basePath = path.join(__dirname, '..', 'storage', 'documentos', empreendimentoId);
@@ -281,23 +329,108 @@ router.post('/unidades/:id/excluir', (req, res) => {
 router.get('/espelho', (req, res) => {
   const empreendimentos = db.prepare('SELECT * FROM empreendimentos').all();
   const empreendimentoId = req.query.empreendimento || empreendimentos[0]?.id;
-  const empreendimentoSelecionado = empreendimentos.find(e => e.id === empreendimentoId);
-  const unidades = db.prepare(`
-    SELECT u.*, c.nome as clienteNome
+  const empreendimentoSelecionado = empreendimentos.find((e) => e.id === empreendimentoId);
+
+  const todas = db.prepare(`
+    SELECT u.*, c.nome AS clienteNome, us.nome AS reservadoPorNome
     FROM unidades u
-    LEFT JOIN clientes c ON u.clienteId = c.id
+    LEFT JOIN clientes c ON c.id = u.clienteId
+    LEFT JOIN usuarios us ON us.id = u.reservadoPor
     WHERE u.empreendimentoId = ?
-  `).all(empreendimentoId).map((u) => ({ ...u, statusLabel: unidadeStatusMap[u.status] || u.status }));
-  res.render('espelho', { empreendimentos, empreendimentoSelecionado, unidades });
+    ORDER BY u.numero
+  `).all(empreendimentoId).map((u) => ({
+    ...u,
+    statusLabel: unidadeStatusMap[u.status] || u.status,
+    // Quem pode desfazer esta reserva específica
+    podeLiberar: u.status === 'negociacao'
+      && (req.usuario.papel === 'admin' || u.reservadoPor === req.usuario.id)
+  }));
+
+  // Contagem sempre sobre o total, não sobre o filtro — senão o próprio
+  // filtro zeraria os números que ajudam a escolher o filtro.
+  const contagem = todas.reduce((acc, u) => {
+    acc[u.status] = (acc[u.status] || 0) + 1;
+    return acc;
+  }, {});
+
+  const statusFiltro = req.query.status || 'todos';
+  const pavimentoFiltro = req.query.pavimento || 'todos';
+
+  const unidades = todas.filter((u) =>
+    (statusFiltro === 'todos' || u.status === statusFiltro) &&
+    (pavimentoFiltro === 'todos' || String(u.pavimento || '') === pavimentoFiltro)
+  );
+
+  const pavimentos = [...new Set(todas.map((u) => u.pavimento).filter(Boolean))];
+
+  res.render('espelho', {
+    empreendimentos,
+    empreendimentoSelecionado,
+    unidades,
+    total: todas.length,
+    contagem,
+    pavimentos,
+    statusFiltro,
+    pavimentoFiltro,
+    // Para reservar é preciso escolher um cliente que já exista
+    clientes: db.prepare('SELECT id, nome, cpfCnpj FROM clientes ORDER BY nome').all(),
+    erro: req.query.erro || null,
+    aviso: req.query.aviso || null
+  });
+});
+
+function voltarParaEspelho(req, res, chave, valor) {
+  const qs = new URLSearchParams({ empreendimento: req.body.empreendimento || '' });
+  if (valor) qs.set(chave, valor);
+  res.redirect(`/espelho?${qs}`);
+}
+
+router.post('/unidades/:id/reservar', (req, res) => {
+  try {
+    const r = reservas.reservar({
+      unidadeId: req.params.id,
+      clienteId: req.body.clienteId,
+      usuario: req.usuario
+    });
+    voltarParaEspelho(req, res, 'aviso', `Unidade ${r.unidade} reservada para ${r.cliente}.`);
+  } catch (e) {
+    voltarParaEspelho(req, res, 'erro', e.message);
+  }
+});
+
+router.post('/unidades/:id/liberar', (req, res) => {
+  try {
+    const r = reservas.liberar({ unidadeId: req.params.id, usuario: req.usuario });
+    voltarParaEspelho(req, res, 'aviso', `Unidade ${r.unidade} voltou a ficar livre.`);
+  } catch (e) {
+    voltarParaEspelho(req, res, 'erro', e.message);
+  }
 });
 
 router.get('/clientes', (req, res) => {
+  const ehAdmin = req.usuario.papel === 'admin';
+
   const clientes = db.prepare(`
-    SELECT cl.*, COALESCE(e.nome, 'Não vinculado') as empreendimentoNome, COALESCE(u.numero, 'Não vinculada') as unidadeNumero
+    SELECT cl.*,
+           COALESCE(e.nome, 'Não vinculado') as empreendimentoNome,
+           COALESCE(u.numero, 'Não vinculada') as unidadeNumero,
+           us.nome AS criadoPorNome
     FROM clientes cl
     LEFT JOIN empreendimentos e ON cl.empreendimentoId = e.id
     LEFT JOIN unidades u ON cl.unidadeId = u.id
-  `).all();
+    LEFT JOIN usuarios us ON us.id = cl.criadoPor
+  `).all().map((c) => {
+    // Corretor vê a carteira inteira, mas o contato só de quem ele trouxe:
+    // telefone e e-mail alheios são o ativo comercial do outro corretor.
+    const meu = ehAdmin || c.criadoPor === req.usuario.id;
+    return {
+      ...c,
+      meu,
+      telefone: meu ? c.telefone : formato.mascararContato(c.telefone),
+      email: meu ? c.email : formato.mascararContato(c.email)
+    };
+  });
+
   res.render('clientes', { clientes, erro: req.query.erro || null });
 });
 
@@ -308,33 +441,66 @@ router.post('/clientes', (req, res) => {
   if (!(nome || '').trim()) {
     return res.redirect(`/clientes?erro=${encodeURIComponent('Informe o nome do cliente.')}`);
   }
-  const documento = (cpfCnpj || '').trim();
-  const jaExiste = documento ? db.prepare('SELECT nome FROM clientes WHERE cpfCnpj = ?').get(documento) : null;
+  const documento = formato.formatarCpfCnpj(cpfCnpj);
+
+  // Compara só os dígitos: "12345678900" e "123.456.789-00" são a mesma
+  // pessoa, e cadastros antigos podem estar sem pontuação.
+  const jaExiste = documento ? db.prepare(`
+    SELECT nome FROM clientes
+    WHERE REPLACE(REPLACE(REPLACE(cpfCnpj, '.', ''), '-', ''), '/', '') = ?
+  `).get(formato.somenteDigitos(documento)) : null;
+
   if (jaExiste) {
     return res.redirect(
       `/clientes?erro=${encodeURIComponent(`Já existe um cliente com esse CPF/CNPJ: ${jaExiste.nome}`)}`
     );
   }
+
   db.prepare(
-    'INSERT INTO clientes (nome, cpfCnpj, telefone, email, tipo, observacoes) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run([nome, documento || null, telefone || null, email || null, tipo || 'Comprador', observacoes || null]);
+    'INSERT INTO clientes (nome, cpfCnpj, telefone, email, tipo, observacoes, criadoPor) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).run([nome, documento, telefone || null, email || null, tipo || 'Comprador', observacoes || null, req.usuario.id]);
   res.redirect('/clientes');
 });
+
+/**
+ * A tela de edição mostra telefone e e-mail sem máscara — se qualquer corretor
+ * pudesse abri-la, esconder o contato na listagem não serviria de nada. Então
+ * corretor só edita o que ele mesmo cadastrou.
+ */
+function podeEditarCliente(req, cliente) {
+  return req.usuario.papel === 'admin' || cliente.criadoPor === req.usuario.id;
+}
 
 router.get('/clientes/:id/editar', (req, res) => {
   const cliente = db.prepare('SELECT * FROM clientes WHERE id = ?').get(parseInt(req.params.id));
   if (!cliente) return res.status(404).send('Cliente não encontrado');
+
+  if (!podeEditarCliente(req, cliente)) {
+    return res.status(403).render('sem-permissao', { area: `o cadastro de ${cliente.nome}` });
+  }
+
   res.render('cliente-editar', { cliente, erro: req.query.erro || null });
 });
 
 router.post('/clientes/:id', (req, res) => {
   const id = parseInt(req.params.id);
   const { nome, cpfCnpj, telefone, email, tipo, observacoes } = req.body;
+
+  const atual = db.prepare('SELECT * FROM clientes WHERE id = ?').get(id);
+  if (!atual) return res.status(404).send('Cliente não encontrado');
+  if (!podeEditarCliente(req, atual)) {
+    return res.status(403).render('sem-permissao', { area: `o cadastro de ${atual.nome}` });
+  }
+
   if (!(nome || '').trim()) {
     return res.redirect(`/clientes/${id}/editar?erro=${encodeURIComponent('Informe o nome do cliente.')}`);
   }
-  const documento = (cpfCnpj || '').trim();
-  const conflito = documento ? db.prepare('SELECT nome FROM clientes WHERE cpfCnpj = ? AND id <> ?').get([documento, id]) : null;
+  const documento = formato.formatarCpfCnpj(cpfCnpj);
+  const conflito = documento ? db.prepare(`
+    SELECT nome FROM clientes
+    WHERE REPLACE(REPLACE(REPLACE(cpfCnpj, '.', ''), '-', ''), '/', '') = ? AND id <> ?
+  `).get([formato.somenteDigitos(documento), id]) : null;
+
   if (conflito) {
     return res.redirect(
       `/clientes/${id}/editar?erro=${encodeURIComponent(`Outro cliente já usa esse CPF/CNPJ: ${conflito.nome}`)}`
@@ -342,7 +508,7 @@ router.post('/clientes/:id', (req, res) => {
   }
   db.prepare(
     'UPDATE clientes SET nome = ?, cpfCnpj = ?, telefone = ?, email = ?, tipo = ?, observacoes = ? WHERE id = ?'
-  ).run([nome, documento || null, telefone || null, email || null, tipo || 'Comprador', observacoes || null, id]);
+  ).run([nome, documento, telefone || null, email || null, tipo || 'Comprador', observacoes || null, id]);
   res.redirect('/clientes');
 });
 
@@ -465,7 +631,7 @@ router.get('/contratos', (req, res) => {
     const aguardando = op.contratos.filter((c) => c.status === 'pendente').length;
     return { ...op, concluidos, total: op.contratos.length, aguardando, statusGeral: concluidos === op.contratos.length ? 'Concluído' : 'Em andamento' };
   });
-  res.render('contratos', { operacoes, clientes, empreendimentos, unidades, anexado: Boolean(req.query.anexado), aproveitados: parseInt(req.query.aproveitados) || 0, formLink: 'https://docs.google.com/forms/d/e/1FAIpQLSeqABI1z4kCqJUjv9gK3hc45BldUVBJcCjNiT13FyY2tF_V5Q/viewform' });
+  res.render('contratos', { operacoes, clientes, empreendimentos, unidades, anexado: Boolean(req.query.anexado), aproveitados: parseInt(req.query.aproveitados) || 0, formLink: FORM_URL });
 });
 
 router.post('/contratos/iniciar', (req, res) => {
@@ -486,7 +652,7 @@ router.post('/contratos/iniciar', (req, res) => {
     ]
   };
   const templates = templatesMap[categoriaOperacao] || [];
-  const FORM_LINK = 'https://docs.google.com/forms/d/10F6hk-zWLtZkzk2Xhnn-X1Tu5q2UVh9WXmlBOfu_5EU/viewform';
+  const FORM_LINK = FORM_URL;
   const ins = db.prepare(
     'INSERT INTO contratos (id, nome, categoria, status, formLink, empreendimentoId, unidadeId, clienteId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   );

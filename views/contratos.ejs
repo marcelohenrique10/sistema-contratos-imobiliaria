@@ -164,9 +164,14 @@
                       <!-- Botão de ação direta para o Autentique solicitado pelo Marcelo -->
                       <a href="https://app.autentique.com.br" class="button secondary" style="padding: 6px 12px; font-size: 12px; background-color: #475569;" target="_blank">Enviar p/ Assinatura</a>
                     <% } else if (c.status === 'pendente') { %>
+                      <%# Cada documento pendente leva direto ao formulário. O link é o
+                          público do Google Forms, e vem gravado no próprio contrato. %>
+                      <a href="<%= c.formLink || formLink %>" target="_blank" rel="noopener noreferrer"
+                         class="button" style="padding: 6px 12px; font-size: 12px;">Preencher formulário</a>
                       <a href="/documentos/enviar?cliente=<%= op.clienteId %>&contrato=<%= c.id %>" class="button secondary" style="padding: 6px 12px; font-size: 12px;">Anexar</a>
                     <% } else { %>
-                      <span style="color: #94a3b8; font-size: 12px; padding-right: 8px;">Aguardando formulário</span>
+                      <a href="<%= c.formLink || formLink %>" target="_blank" rel="noopener noreferrer"
+                         class="button secondary" style="padding: 6px 12px; font-size: 12px;">Preencher formulário</a>
                     <% } %>
                     <form method="POST" action="/contratos/<%= c.id %>/excluir" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir?')">
                       <button type="submit" class="button danger" style="padding: 6px 12px; font-size: 12px;">Excluir</button>
