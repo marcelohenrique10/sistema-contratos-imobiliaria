@@ -1,7 +1,7 @@
 const crypto = require('crypto');
+const usuarios = require('./usuarios');
 
 const NOME_COOKIE = 'sessao';
-const DURACAO_HORAS = 12;
 
 function segredo() {
   const valor = process.env.SESSION_SECRET;
@@ -16,28 +16,32 @@ function assinar(dados) {
 }
 
 /**
- * Cria um token assinado com validade. Não guardamos sessão em memória: o
- * próprio cookie carrega a validade, e a assinatura impede adulteração.
- * Assim o login sobrevive a reinícios do servidor.
+ * O token carrega quem é e até quando vale — nada mais. O papel fica de fora
+ * de propósito: ele é lido do banco a cada requisição, então promover, rebaixar
+ * ou desativar alguém vale na hora, sem esperar a sessão expirar.
  */
-function criarToken() {
-  const expiraEm = Date.now() + DURACAO_HORAS * 60 * 60 * 1000;
-  const dados = String(expiraEm);
+function criarToken(usuarioId, horas) {
+  const dados = `${usuarioId}.${Date.now() + horas * 60 * 60 * 1000}`;
   return `${dados}.${assinar(dados)}`;
 }
 
-function tokenValido(token) {
-  if (!token || !token.includes('.')) return false;
+function lerToken(token) {
+  if (!token) return null;
 
-  const [dados, assinatura] = token.split('.');
-  const esperada = assinar(dados);
+  const partes = String(token).split('.');
+  if (partes.length !== 3) return null;
+
+  const [id, expiraEm, assinatura] = partes;
+  const esperada = assinar(`${id}.${expiraEm}`);
 
   // Comparação em tempo constante evita vazar informação pelo tempo de resposta
   const a = Buffer.from(assinatura || '');
   const b = Buffer.from(esperada);
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return false;
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
 
-  return Number(dados) > Date.now();
+  if (Number(expiraEm) <= Date.now()) return null;
+
+  return { usuarioId: Number(id) };
 }
 
 function lerCookie(req, nome) {
@@ -46,22 +50,14 @@ function lerCookie(req, nome) {
   return par ? decodeURIComponent(par.slice(nome.length + 1)) : null;
 }
 
-function senhaConfere(informada) {
-  const correta = process.env.APP_SENHA || '';
-  if (!correta) return false;
-
-  const a = Buffer.from(String(informada || ''));
-  const b = Buffer.from(correta);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
-}
-
-function definirCookieSessao(res) {
+function definirCookieSessao(res, usuario) {
+  const horas = usuarios.horasDeSessao(usuario.papel);
   const partes = [
-    `${NOME_COOKIE}=${criarToken()}`,
+    `${NOME_COOKIE}=${criarToken(usuario.id, horas)}`,
     'HttpOnly',
     'SameSite=Lax',
     'Path=/',
-    `Max-Age=${DURACAO_HORAS * 60 * 60}`
+    `Max-Age=${horas * 60 * 60}`
   ];
   // Em produção o cookie só trafega por HTTPS
   if (process.env.NODE_ENV === 'production') partes.push('Secure');
@@ -73,8 +69,19 @@ function limparCookieSessao(res) {
   res.setHeader('Set-Cookie', `${NOME_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
 }
 
+/** O usuário da requisição, ou null. Conta desativada não vale mais. */
+function usuarioDaRequisicao(req) {
+  const dados = lerToken(lerCookie(req, NOME_COOKIE));
+  if (!dados) return null;
+
+  const usuario = usuarios.porId(dados.usuarioId);
+  if (!usuario || !usuario.ativo) return null;
+
+  return usuario;
+}
+
 function estaAutenticado(req) {
-  return tokenValido(lerCookie(req, NOME_COOKIE));
+  return Boolean(usuarioDaRequisicao(req));
 }
 
 /**
@@ -82,16 +89,41 @@ function estaAutenticado(req) {
  * e volta para onde tentou entrar depois de entrar.
  */
 function exigirLogin(req, res, next) {
-  if (estaAutenticado(req)) return next();
+  const usuario = usuarioDaRequisicao(req);
 
-  const destino = encodeURIComponent(req.originalUrl || '/');
-  res.redirect(`/login?destino=${destino}`);
+  if (!usuario) {
+    const destino = encodeURIComponent(req.originalUrl || '/');
+    return res.redirect(`/login?destino=${destino}`);
+  }
+
+  req.usuario = usuario;
+  // Disponível em toda view, sem precisar passar em cada res.render
+  res.locals.usuario = usuario;
+  res.locals.ehAdmin = usuario.papel === 'admin';
+  next();
 }
+
+/** Barra quem não tem o papel. Use depois de exigirLogin. */
+function exigirPapel(...papeis) {
+  return (req, res, next) => {
+    if (req.usuario && papeis.includes(req.usuario.papel)) return next();
+
+    res.status(403).render('sem-permissao', {
+      area: req.originalUrl,
+      usuario: req.usuario || null,
+      ehAdmin: false
+    });
+  };
+}
+
+const exigirAdmin = exigirPapel('admin');
 
 module.exports = {
   exigirLogin,
+  exigirPapel,
+  exigirAdmin,
   estaAutenticado,
-  senhaConfere,
+  usuarioDaRequisicao,
   definirCookieSessao,
   limparCookieSessao
 };

@@ -1,68 +1,55 @@
 <%- include("partials/header") %>
 
-<section class="page-header">
-  <h2>Dashboard</h2>
-  <p>Visão geral inicial do sistema interno.</p>
-</section>
-
-<section class="cards">
-  <div class="card">
-    <h3>Empreendimentos</h3>
-    <p class="big-number"><%= totalEmpreendimentos %></p>
+<div class="container">
+  <div class="page-header">
+    <h2>Dashboard</h2>
+    <p>Visão geral inicial do sistema interno.</p>
   </div>
 
-  <div class="card">
-    <h3>Clientes</h3>
-    <p class="big-number"><%= totalClientes %></p>
-  </div>
-
-  <div class="card">
-    <h3>Contratos</h3>
-    <p class="big-number"><%= totalContratos %></p>
-  </div>
-
-  <div class="card">
-    <h3>Entradas</h3>
-    <p class="big-number">R$ <%= totalEntradas.toLocaleString("pt-BR") %></p>
-  </div>
-
-  <div class="card">
-    <h3>Saídas</h3>
-    <p class="big-number">R$ <%= totalSaidas.toLocaleString("pt-BR") %></p>
-  </div>
-
-  <div class="card">
-    <h3>A vencer</h3>
-    <p class="big-number" style="color: #b45309;">R$ <%= totalPrevisto.toLocaleString("pt-BR") %></p>
-    <p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;">
-      Parcelas ainda no prazo
-    </p>
-  </div>
-
-  <div class="card">
-    <h3>Atrasado</h3>
-    <p class="big-number" style="color: <%= totalAtrasado > 0 ? '#b91c1c' : '#9ca3af' %>;">
-      R$ <%= totalAtrasado.toLocaleString("pt-BR") %>
-    </p>
-    <p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;">
-      <% if (totalAtrasado > 0) { %>
-        <a href="/financeiro?situacao=atrasado" style="color:#b91c1c;">Ver o que venceu</a>
-      <% } else { %>
-        Nada vencido em aberto
-      <% } %>
-    </p>
-  </div>
-</section>
-
-<section class="cards">
-  <div class="card">
-    <h3>Atalhos rápidos</h3>
-    <div class="actions">
-      <a class="button" href="/empreendimentos">Ver empreendimentos</a>
-      <a class="button secondary" href="/contratos">Abrir contratos</a>
-      <a class="button secondary" href="/financeiro">Ver financeiro</a>
+  <div class="cards">
+    <div class="card">
+      <p>Empreendimentos</p>
+      <div class="big-number"><%= totalEmpreendimentos %></div>
+    </div>
+    <div class="card">
+      <p>Clientes</p>
+      <div class="big-number"><%= totalClientes %></div>
+    </div>
+    <div class="card">
+      <p>Contratos</p>
+      <div class="big-number"><%= totalContratos %></div>
     </div>
   </div>
-</section>
+
+  <div class="cards">
+    <div class="card">
+      <p>Recebido (Confirmado)</p>
+      <div class="big-number" style="color: #15803d;">R$ <%= totalEntradas.toLocaleString("pt-BR") %></div>
+    </div>
+    <div class="card">
+      <p>A vencer (No prazo)</p>
+      <div class="big-number" style="color: #1d4ed8;">R$ <%= totalPrevisto.toLocaleString("pt-BR") %></div>
+      <p class="mini-stats">Parcelas ainda no prazo</p>
+    </div>
+    <div class="card">
+      <p>Atrasado</p>
+      <div class="big-number" style="color: #b91c1c;">R$ <%= totalAtrasado.toLocaleString("pt-BR") %></div>
+      <p class="mini-stats">
+        <% if (totalAtrasado > 0) { %>
+          <span style="color: #b91c1c; font-weight: bold;">⚠️ Há valores pendentes</span>
+        <% } else { %>
+          Nada vencido em aberto
+        <% } %>
+      </p>
+    </div>
+  </div>
+
+  <h3>Atalhos rápidos</h3>
+  <div class="actions">
+    <a href="/empreendimentos" class="button">Ver empreendimentos</a>
+    <a href="/contratos" class="button secondary">Abrir contratos</a>
+    <a href="/financeiro" class="button secondary">Ver financeiro</a>
+  </div>
+</div>
 
 <%- include("partials/footer") %>

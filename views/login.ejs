@@ -46,8 +46,15 @@
       <div class="erro"><%= erro %></div>
     <% } %>
 
-    <label for="senha">Senha de acesso</label>
-    <input type="password" id="senha" name="senha" autocomplete="current-password" autofocus required />
+    <label for="login">Login</label>
+    <input type="text" id="login" name="login" value="<%= login %>"
+           autocomplete="username" autocapitalize="none" autocorrect="off"
+           spellcheck="false" inputmode="email"
+           <%= login ? '' : 'autofocus' %> required />
+
+    <label for="senha">Senha</label>
+    <input type="password" id="senha" name="senha" autocomplete="current-password"
+           <%= login ? 'autofocus' : '' %> required />
 
     <input type="hidden" name="destino" value="<%= destino %>" />
 

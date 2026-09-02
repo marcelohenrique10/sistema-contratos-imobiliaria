@@ -1,0 +1,38 @@
+<script>
+  // Pontua enquanto digita: até 11 dígitos vira CPF, acima vira CNPJ.
+  // O servidor formata de novo ao gravar — isto aqui é só conforto de quem
+  // está preenchendo, principalmente no celular.
+  (function () {
+    var campo = document.getElementById('cpfCnpj');
+    if (!campo) return;
+
+    function pontuar(d) {
+      if (d.length <= 11) {
+        return d
+          .replace(/^(\d{3})(\d)/, '$1.$2')
+          .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+          .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
+      }
+      return d
+        .replace(/^(\d{2})(\d)/, '$1.$2')
+        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3/$4')
+        .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d)/, '$1.$2.$3/$4-$5');
+    }
+
+    campo.setAttribute('inputmode', 'numeric');
+    campo.setAttribute('maxlength', '18');
+    if (!campo.getAttribute('placeholder')) {
+      campo.setAttribute('placeholder', '000.000.000-00');
+    }
+
+    campo.addEventListener('input', function () {
+      this.value = pontuar(this.value.replace(/\D/g, '').slice(0, 14));
+    });
+
+    // Cola de planilha costuma vir sem pontuação
+    campo.addEventListener('blur', function () {
+      this.value = pontuar(this.value.replace(/\D/g, '').slice(0, 14));
+    });
+  })();
+</script>

@@ -13,17 +13,30 @@
       <p>Controle operacional e financeiro</p>
     </div>
 
+    <%
+      // `ehAdmin` e `usuario` vêm de res.locals, definidos em exigirLogin.
+      const admin = typeof ehAdmin !== 'undefined' && ehAdmin;
+      const quem = typeof usuario !== 'undefined' ? usuario : null;
+    %>
     <nav class="menu">
-      <a href="/">Dashboard</a>
-      <a href="/empreendimentos">Empreendimentos</a>
+      <% if (admin) { %><a href="/">Dashboard</a><% } %>
       <a href="/espelho">Espelho</a>
       <a href="/clientes">Clientes</a>
       <a href="/contratos">Contratos</a>
-      <a href="/financeiro">Financeiro</a>
       <a href="/documentos">Documentos</a>
+      <a href="/empreendimentos">Empreendimentos</a>
+      <% if (admin) { %>
+        <a href="/financeiro">Financeiro</a>
+        <a href="/usuarios">Usuários</a>
+      <% } %>
       <a href="/documentos/enviar" class="btn-upload">+ Enviar documento</a>
 
       <form action="/logout" method="POST" class="inline-form" style="display:inline;margin-left:8px;">
+        <% if (quem) { %>
+          <span style="color:#cbd5e1;font-size:13px;margin-right:8px;">
+            <%= quem.nome %><%= admin ? '' : ' · corretor' %>
+          </span>
+        <% } %>
         <button type="submit" class="button secondary" style="font-size:13px;padding:6px 12px;">Sair</button>
       </form>
     </nav>

@@ -1,42 +1,40 @@
 <%- include("partials/header") %>
 
-<script type="application/json" id="unidades-data"><%- JSON.stringify(unidades) %></script>
-
-<section class="page-header">
-  <h2>Contratos</h2>
-  <p>Geração e acompanhamento de operações contratuais.</p>
-</section>
-
-<% if (typeof aproveitados !== 'undefined' && aproveitados > 0) { %>
-  <div class="empty-state" style="color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:16px;">
-    <%= aproveitados %>
-    <%= aproveitados === 1 ? 'documento que já existia foi aproveitado' : 'documentos que já existiam foram aproveitados' %>
-    nesta operação — o formulário já tinha sido preenchido antes.
-  </div>
-<% } %>
-
-<% if (typeof anexado !== 'undefined' && anexado) { %>
-  <div class="empty-state" style="color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:16px;">
-    Documento anexado. O item deixou de aparecer como aguardando.
-  </div>
-<% } %>
-
-<!-- BLOCO A: Iniciar nova operação -->
-<div class="form-card" style="margin-bottom: 32px;">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+<div class="container">
+  <!-- Cabeçalho com o novo atalho geral para o Autentique -->
+  <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
     <div>
-      <h3 style="margin: 0 0 4px;">Iniciar nova operação</h3>
-      <p style="margin: 0; color: #6b7280; font-size: 14px;">Selecione cliente, unidade e categoria para gerar os contratos automaticamente.</p>
+      <h2 style="margin: 0;">Contratos</h2>
+      <p style="margin: 4px 0 0; color: #6b7280;">Geração e acompanhamento de operações contratuais.</p>
     </div>
-    <button class="button" id="btn-toggle">Iniciar processo de venda</button>
+    <!-- Botão de atalho rápido geral solicitado pelo Marcelo -->
+    <a href="https://app.autentique.com.br" target="_blank" class="button" style="background-color: #7c3aed; display: inline-flex; align-items: center; gap: 8px; font-weight: bold; text-decoration: none;">
+      Acessar Autentique
+    </a>
   </div>
 
-  <div id="form-nova-operacao" style="display: none; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
-    <form action="/contratos/iniciar" method="POST">
+  <% if (typeof aproveitados !== 'undefined' && aproveitados > 0) { %>
+    <div style="background: #dcfce7; color: #15803d; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+      <%= aproveitados %> <%= aproveitados === 1 ? 'documento que já existia foi aproveitado' : 'documentos que já existiam foram aproveitados' %> nesta operação — o formulário já tinha sido preenchido antes.
+    </div>
+  <% } %>
+
+  <% if (typeof anexado !== 'undefined' && anexado) { %>
+    <div style="background: #dcfce7; color: #15803d; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+      Documento anexado. O item deixou de aparecer como aguardando.
+    </div>
+  <% } %>
+
+  <!-- Formulário de Nova Operação -->
+  <div class="form-card">
+    <h3>Iniciar nova operação</h3>
+    <p style="color: #6b7280; font-size: 14px; margin-top: -10px; margin-bottom: 20px;">Selecione cliente, unidade e categoria para gerar os contratos automaticamente.</p>
+    
+    <form method="POST" action="/contratos/iniciar">
       <div class="form-grid">
         <div class="form-group">
-          <label for="clienteId">Cliente</label>
-          <select name="clienteId" id="clienteId" required>
+          <label>Cliente</label>
+          <select name="clienteId" required>
             <option value="">Selecione um cliente</option>
             <% clientes.forEach(c => { %>
               <option value="<%= c.id %>"><%= c.nome %></option>
@@ -45,7 +43,7 @@
         </div>
 
         <div class="form-group">
-          <label for="select-empreendimento">Empreendimento</label>
+          <label>Empreendimento</label>
           <select name="empreendimentoId" id="select-empreendimento" required>
             <option value="">Selecione um empreendimento</option>
             <% empreendimentos.forEach(e => { %>
@@ -55,15 +53,15 @@
         </div>
 
         <div class="form-group">
-          <label for="select-unidade">Unidade</label>
+          <label>Unidade</label>
           <select name="unidadeId" id="select-unidade" required>
             <option value="">Selecione primeiro o empreendimento</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label for="categoriaOperacao">Categoria da operação</label>
-          <select name="categoriaOperacao" id="categoriaOperacao" required>
+          <label>Categoria da operação</label>
+          <select name="categoriaOperacao" required>
             <option value="compra_venda">Compra e Venda (3 documentos)</option>
             <option value="permuta">Permuta (2 documentos)</option>
             <option value="reserva">Reserva (1 documento)</option>
@@ -71,188 +69,151 @@
         </div>
 
         <div class="form-group full">
-          <label for="observacoes">Observações</label>
-          <textarea name="observacoes" id="observacoes" placeholder="Observações opcionais sobre a operação..."></textarea>
+          <label>Observações</label>
+          <input type="text" name="observacoes" placeholder="Ex: Negociação especial, correção de parcelas...">
         </div>
       </div>
 
-      <div class="actions" style="margin-top: 16px;">
+      <div class="actions" style="margin-top: 20px;">
         <button type="submit" class="button">Criar contratos</button>
-        <button type="button" class="button secondary" id="btn-cancelar">Cancelar</button>
+        <button type="reset" class="button secondary">Cancelar</button>
       </div>
     </form>
   </div>
-</div>
 
-<!-- BLOCO B: Operações em andamento -->
-<h3 style="margin: 0 0 12px;">Operações em andamento</h3>
-
-<% if (operacoes.length === 0) { %>
-  <div class="empty-state">Nenhuma operação registrada. Inicie um processo de venda acima.</div>
-<% } else { %>
-  <table>
-    <thead>
-      <tr>
-        <th>Cliente</th>
-        <th>Unidade</th>
-        <th>Empreendimento</th>
-        <th>Início</th>
-        <th>Status</th>
-        <th>Ações</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% operacoes.forEach((op, idx) => { %>
-        <tr>
-          <td><%= op.clienteNome %></td>
-          <td><%= op.unidadeNumero %></td>
-          <td><%= op.empreendimentoNome %></td>
-          <td><%= op.dataInicio %></td>
-          <td>
-            <span class="op-status <%= op.statusGeral === 'Concluído' ? 'op-status-concluido' : 'op-status-andamento' %>">
+  <!-- Operações em Andamento -->
+  <h3>Operações em andamento</h3>
+  <% if (operacoes.length === 0) { %>
+    <div class="empty-state">
+      Nenhuma operação registrada. Inicie um processo de venda acima.
+    </div>
+  <% } else { %>
+    <% operacoes.forEach((op, idx) => { %>
+      <div class="form-card" style="margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <h4 style="margin: 0; font-size: 16px; color: #1f2937;">
+              Cliente: <span style="font-weight: normal; color: #4b5563;"><%= op.clienteNome %></span> | 
+              Unidade: <span style="font-weight: normal; color: #4b5563;"><%= op.unidadeNumero %></span> | 
+              Empreendimento: <span style="font-weight: normal; color: #4b5563;"><%= op.empreendimentoNome %></span>
+            </h4>
+            <p style="margin: 4px 0 0; font-size: 13px; color: #6b7280;">Início: <%= op.dataInicio %> | Categoria da Operação: <%= op.categoriaOperacao %></p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span class="op-status op-status-<%= op.statusGeral === 'Concluído' ? 'concluido' : 'andamento' %>">
               <%= op.statusGeral %>
             </span>
-            <div style="color:#6b7280;font-size:11px;margin-top:4px;">
-              <%= op.concluidos %> de <%= op.total %> prontos<%= op.aguardando > 0 ? ` · ${op.aguardando} aguardando` : '' %>
-            </div>
-          </td>
-          <td>
-            <button
-              class="button secondary"
-              style="font-size: 12px; padding: 6px 10px;"
-              data-toggle-detalhes="<%= idx %>"
-            >Ver documentos</button>
-          </td>
-        </tr>
-        <tr id="detalhes-<%= idx %>" style="display: none;">
-          <td colspan="6" style="background: #f8fafc; padding: 0;">
-            <% if (op.aguardando > 0) { %>
-              <div style="padding:14px 18px;background:#fffbeb;border-bottom:1px solid #fde68a;color:#92400e;font-size:14px;">
-                <strong><%= op.aguardando %></strong>
-                <%= op.aguardando === 1 ? 'documento ainda aguarda' : 'documentos ainda aguardam' %>
-                os dados do comprador. Há dois caminhos:
-                <a href="<%= formLink %>" target="_blank" rel="noopener noreferrer">enviar o formulário</a>
-                para preenchimento, ou
-                <a href="/documentos/enviar?cliente=<%= op.clienteId %>">anexar o documento já assinado</a>.
-              </div>
-            <% } %>
-            <table style="box-shadow: none; border-radius: 0; margin: 0;">
-              <thead>
-                <tr>
-                  <th>Documento</th>
-                  <th>Situação</th>
-                  <th>Arquivo</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% op.contratos.forEach(c => { %>
-                  <%
-                    const paleta = {
-                      amarelo: ['#fffbeb', '#92400e', '#fde68a'],
-                      azul:    ['#eff6ff', '#1d4ed8', '#bfdbfe'],
-                      verde:   ['#f0fdf4', '#166534', '#bbf7d0'],
-                      cinza:   ['#f3f4f6', '#4b5563', '#e5e7eb']
-                    };
-                    const [bg, fg, bd] = paleta[c.statusCor] || paleta.cinza;
-                  %>
-                  <tr>
-                    <td>
-                      <%= c.nome %>
-                      <% if (c.categoria) { %>
-                        <div style="color:#9ca3af;font-size:11px;"><%= c.categoria %></div>
-                      <% } %>
-                    </td>
-                    <td>
-                      <span style="background:<%= bg %>;color:<%= fg %>;border:1px solid <%= bd %>;font-size:12px;padding:3px 8px;border-radius:4px;white-space:nowrap;">
-                        <%= c.statusLabel %>
-                      </span>
-                      <% if (c.statusExplica) { %>
-                        <div style="color:#6b7280;font-size:11px;margin-top:4px;max-width:280px;"><%= c.statusExplica %></div>
-                      <% } %>
-                    </td>
-                    <td>
-                      <% if (c.documento && c.documento.disponivel) { %>
-                        <a class="button" style="font-size:12px;padding:5px 10px;"
-                           href="<%= c.documento.caminho %>" download>Baixar</a>
-                        <div style="color:#9ca3af;font-size:11px;margin-top:4px;">
-                          <%= c.documento.origem === 'enviado' ? 'enviado pela equipe' : 'gerado pelo sistema' %>
-                        </div>
-                      <% } else if (c.status === 'pendente') { %>
-                        <a class="button secondary" style="font-size:12px;padding:5px 10px;"
-                           href="/documentos/enviar?cliente=<%= c.clienteId %>&contrato=<%= c.id %>">Anexar</a>
-                      <% } else { %>
-                        <span style="color:#9ca3af;font-size:12px;">—</span>
-                      <% } %>
-                    </td>
-                    <td>
-                      <form action="/contratos/<%= c.id %>/excluir" method="POST" class="inline-form"
-                            onsubmit="return confirm('Excluir este contrato? Os lançamentos financeiros dele também serão removidos.');">
-                        <button type="submit" class="button danger" style="font-size:12px;padding:5px 10px;">Excluir</button>
-                      </form>
-                    </td>
-                  </tr>
-                <% }) %>
-              </tbody>
-            </table>
-          </td>
-        </tr>
-      <% }) %>
-    </tbody>
-  </table>
-<% } %>
+            <span style="font-size: 13px; color: #475569; font-weight: bold;"><%= op.concluidos %> de <%= op.total %> prontos</span>
+          </div>
+        </div>
 
+        <% if (op.aguardando > 0) { %>
+          <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; color: #78350f;">
+            <strong><%= op.aguardando %> <%= op.aguardando === 1 ? 'documento ainda aguarda' : 'documentos ainda aguardam' %> os dados do comprador.</strong> 
+            Há dois caminhos: enviar o formulário para preenchimento, ou anexar o documento já assinado.
+          </div>
+        <% } %>
+
+        <table style="box-shadow: none; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px;">
+          <thead>
+            <tr>
+              <th style="background: #f8fafc; font-size: 13px;">Documento</th>
+              <th style="background: #f8fafc; font-size: 13px;">Situação</th>
+              <th style="background: #f8fafc; font-size: 13px;">Arquivo</th>
+              <th style="background: #f8fafc; font-size: 13px; text-align: right;">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% op.contratos.forEach(c => { %>
+              <% 
+                const paleta = {
+                  amarelo: ['#fffbeb', '#92400e', '#fde68a'],
+                  azul: ['#eff6ff', '#1d4ed8', '#bfdbfe'],
+                  verde: ['#f0fdf4', '#166534', '#bbf7d0'],
+                  cinza: ['#f3f4f6', '#4b5563', '#e5e7eb']
+                };
+                const [bg, fg, bd] = paleta[c.statusCor] || paleta.cinza;
+              %>
+              <tr>
+                <td style="font-weight: 600; font-size: 14px; width: 35%;">
+                  <%= c.nome %>
+                  <% if (c.categoria) { %>
+                    <br><span style="font-size: 11px; color: #6b7280; font-weight: normal;"><%= c.categoria %></span>
+                  <% } %>
+                </td>
+                <td style="width: 25%;">
+                  <span style="background: <%= bg %>; color: <%= fg %>; border: 1px solid <%= bd %>; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; display: inline-block;">
+                    <%= c.statusLabel %>
+                  </span>
+                  <% if (c.statusExplica) { %>
+                    <p style="margin: 4px 0 0; font-size: 11px; color: #6b7280;"><%= c.statusExplica %></p>
+                  <% } %>
+                </td>
+                <td style="font-size: 13px; width: 20%;">
+                  <% if (c.documento && c.documento.disponivel) { %>
+                    <span style="color: #15803d; font-weight: bold;">✓ Disponível</span>
+                    <br><span style="font-size: 11px; color: #6b7280;"><%= c.documento.origem === 'enviado' ? 'enviado pela equipe' : 'gerado pelo sistema' %></span>
+                  <% } else { %>
+                    <span style="color: #94a3b8;">—</span>
+                  <% } %>
+                </td>
+                <td style="width: 20%;">
+                  <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
+                    <% if (c.documento && c.documento.disponivel) { %>
+                      <a href="/storage/<%= c.documento.caminho.replace(/^\/storage\//, '') %>" class="button" style="padding: 6px 12px; font-size: 12px;" target="_blank">Baixar</a>
+                      <!-- Botão de ação direta para o Autentique solicitado pelo Marcelo -->
+                      <a href="https://app.autentique.com.br" class="button secondary" style="padding: 6px 12px; font-size: 12px; background-color: #475569;" target="_blank">Enviar p/ Assinatura</a>
+                    <% } else if (c.status === 'pendente') { %>
+                      <%# Cada documento pendente leva direto ao formulário. O link é o
+                          público do Google Forms, e vem gravado no próprio contrato. %>
+                      <a href="<%= c.formLink || formLink %>" target="_blank" rel="noopener noreferrer"
+                         class="button" style="padding: 6px 12px; font-size: 12px;">Preencher formulário</a>
+                      <a href="/documentos/enviar?cliente=<%= op.clienteId %>&contrato=<%= c.id %>" class="button secondary" style="padding: 6px 12px; font-size: 12px;">Anexar</a>
+                    <% } else { %>
+                      <a href="<%= c.formLink || formLink %>" target="_blank" rel="noopener noreferrer"
+                         class="button secondary" style="padding: 6px 12px; font-size: 12px;">Preencher formulário</a>
+                    <% } %>
+                    <form method="POST" action="/contratos/<%= c.id %>/excluir" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir?')">
+                      <button type="submit" class="button danger" style="padding: 6px 12px; font-size: 12px;">Excluir</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% }) %>
+  <% } %>
+</div>
+
+<!-- Script dinâmico de carregamento das unidades -->
 <script>
-  const todasUnidades = JSON.parse(document.getElementById("unidades-data").textContent);
+  const unidades = <%- JSON.stringify(unidades) %>;
+  const selectEmpreendimento = document.getElementById('select-empreendimento');
+  const selectUnidade = document.getElementById('select-unidade');
 
-  document.getElementById("btn-toggle").addEventListener("click", function () {
-    const form = document.getElementById("form-nova-operacao");
-    const aberto = form.style.display !== "none";
-    form.style.display = aberto ? "none" : "block";
-    this.textContent = aberto ? "Iniciar processo de venda" : "Fechar";
-  });
-
-  document.getElementById("btn-cancelar").addEventListener("click", function () {
-    const form = document.getElementById("form-nova-operacao");
-    form.style.display = "none";
-    document.getElementById("btn-toggle").textContent = "Iniciar processo de venda";
-  });
-
-  document.getElementById("select-empreendimento").addEventListener("change", function () {
-    const empreendimentoId = this.value;
-    const selectUnidade = document.getElementById("select-unidade");
-
-    selectUnidade.innerHTML = "<option value=\"\">Selecione uma unidade</option>";
-
-    if (!empreendimentoId) return;
-
-    const filtradas = todasUnidades.filter(function (u) {
-      return u.empreendimentoId === empreendimentoId && u.status === "livre";
-    });
-
-    if (filtradas.length === 0) {
-      const opt = document.createElement("option");
-      opt.disabled = true;
-      opt.textContent = "Nenhuma unidade livre neste empreendimento";
-      selectUnidade.appendChild(opt);
+  selectEmpreendimento.addEventListener('change', function() {
+    const empId = this.value;
+    selectUnidade.innerHTML = '<option value="">Selecione uma unidade</option>';
+    
+    if (!empId) {
+      selectUnidade.innerHTML = '<option value="">Selecione primeiro o empreendimento</option>';
       return;
     }
 
-    filtradas.forEach(function (u) {
-      const opt = document.createElement("option");
-      opt.value = u.id;
-      opt.textContent = u.numero + " — " + u.tipologia + " (" + u.metragem + ")";
-      selectUnidade.appendChild(opt);
-    });
-  });
+    const filtradas = unidades.filter(u => u.empreendimentoId === empId);
+    
+    if (filtradas.length === 0) {
+      selectUnidade.innerHTML = '<option value="">Nenhuma unidade cadastrada</option>';
+      return;
+    }
 
-  document.querySelectorAll("[data-toggle-detalhes]").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      const idx = this.dataset.toggleDetalhes;
-      const row = document.getElementById("detalhes-" + idx);
-      const aberto = row.style.display !== "none";
-      row.style.display = aberto ? "none" : "table-row";
-      this.textContent = aberto ? "Ver documentos" : "Fechar";
+    filtradas.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id;
+      opt.textContent = `Unidade ${u.numero} (${u.status === 'livre' ? 'Livre' : 'Ocupada/Negociação'})`;
+      selectUnidade.appendChild(opt);
     });
   });
 </script>
