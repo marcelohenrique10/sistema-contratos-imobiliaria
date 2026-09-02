@@ -12,14 +12,12 @@ const retroativo = require('../services/retroativo');
 
 function criarEstruturaDocumentos(empreendimentoId) {
   const basePath = path.join(__dirname, '..', 'storage', 'documentos', empreendimentoId);
-
   const pastas = [
     basePath,
     path.join(basePath, 'contratos'),
     path.join(basePath, 'anexos'),
     path.join(basePath, 'termos')
   ];
-
   pastas.forEach((pasta) => {
     if (!fs.existsSync(pasta)) {
       fs.mkdirSync(pasta, { recursive: true });
@@ -52,7 +50,6 @@ const financeiroTipoMap = {
 function normalizarLink(valor) {
   const texto = String(valor || '').trim();
   if (!texto || texto === '#') return null;
-
   // Só aceita endereço navegável; evita javascript: e afins no href
   if (!/^https?:\/\//i.test(texto)) {
     return /^[\w.-]+\.[a-z]{2,}/i.test(texto) ? `https://${texto}` : null;
@@ -71,10 +68,7 @@ function comLinksNormalizados(empreendimento) {
 
 router.get('/documentos', (req, res) => {
   const documentos = db.prepare(`
-    SELECT d.*,
-      COALESCE(e.nome, '-') as empreendimentoNome,
-      COALESCE(u.numero, '-') as unidadeNumero,
-      COALESCE(c.nome, '-') as clienteNome
+    SELECT d.*, COALESCE(e.nome, '-') as empreendimentoNome, COALESCE(u.numero, '-') as unidadeNumero, COALESCE(c.nome, '-') as clienteNome
     FROM documentos d
     LEFT JOIN empreendimentos e ON d.empreendimentoId = e.id
     LEFT JOIN unidades u ON d.unidadeId = u.id
@@ -84,10 +78,8 @@ router.get('/documentos', (req, res) => {
     // Só oferece download do que estiver mesmo no disco.
     const relativo = String(doc.caminho || '').replace(/^\/storage\//, '');
     const disponivel = Boolean(relativo) && fs.existsSync(path.join(__dirname, '..', 'storage', relativo));
-
     return { ...doc, disponivel };
   });
-
   res.render('documentos', { documentos, enviado: Boolean(req.query.enviado) });
 });
 
@@ -95,73 +87,70 @@ router.get('/', (req, res) => {
   const totalEmpreendimentos = db.prepare('SELECT COUNT(*) as n FROM empreendimentos').get().n;
   const totalClientes = db.prepare('SELECT COUNT(*) as n FROM clientes').get().n;
   const totalContratos = db.prepare('SELECT COUNT(*) as n FROM contratos').get().n;
-  const lancamentos = db.prepare('SELECT tipo, valor, status, data FROM financeiro')
+  
+  // Busca apenas lançamentos do tipo 'entrada' para remover as saídas por completo do dashboard
+  const lancamentos = db.prepare("SELECT tipo, valor, status, data FROM financeiro WHERE tipo = 'entrada'")
     .all()
     .map(financeiro.enriquecer);
-
+    
   const t = financeiro.totais(lancamentos);
-
+  
   res.render('index', {
     totalEmpreendimentos,
     totalClientes,
     totalContratos,
     totalEntradas: t.recebido,
-    totalSaidas: t.saidas,
     totalPrevisto: t.aVencer,
-    totalAtrasado: t.atrasado,
-    saldo: t.saldo
+    totalAtrasado: t.atrasado
   });
 });
 
 router.get('/empreendimentos', (req, res) => {
   const empreendimentos = db.prepare('SELECT * FROM empreendimentos').all();
-
   const empreendimentosComResumo = empreendimentos.map((empreendimento) => {
     const unidadesDoEmpreendimento = db.prepare(
       'SELECT * FROM unidades WHERE empreendimentoId = ?'
     ).all(empreendimento.id);
-
     return {
       ...empreendimento,
       statusLabel: empreendimentoStatusMap[empreendimento.status] || empreendimento.status,
       resumo: getResumoUnidades(unidadesDoEmpreendimento)
     };
   });
-
   res.render('empreendimentos', { empreendimentos: empreendimentosComResumo });
 });
 
 router.post('/empreendimentos', (req, res) => {
-  const {
-    nome, endereco, status, descricao, memorialLink, plantaLink, tabelaVendaLink,
-    razaoSocial, cnpj, socioAdmin, email, cep
-  } = req.body;
-
+  const { nome, endereco, status, descricao, memorialLink, plantaLink, tabelaVendaLink, razaoSocial, cnpj, socioAdmin, email, cep } = req.body;
   const id = nome
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '-');
-
   db.prepare(
     'INSERT INTO empreendimentos (id, nome, endereco, status, descricao, memorialLink, plantaLink, tabelaVendaLink, razaoSocial, cnpj, socioAdmin, email, cep) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).run([
-    id, nome, endereco, status, descricao,
+    id,
+    nome,
+    endereco || null,
+    status || 'ativo',
+    descricao || null,
     (memorialLink || '').trim() || null,
     (plantaLink || '').trim() || null,
     (tabelaVendaLink || '').trim() || null,
-    razaoSocial || null, cnpj || null, socioAdmin || null, email || null, cep || null
+    razaoSocial || null,
+    cnpj || null,
+    socioAdmin || null,
+    email || null,
+    cep || null
   ]);
-
   criarEstruturaDocumentos(id);
-
   res.redirect('/empreendimentos');
 });
 
 router.get('/empreendimentos/:id/editar', (req, res) => {
   const empreendimento = db.prepare('SELECT * FROM empreendimentos WHERE id = ?').get(req.params.id);
   if (!empreendimento) return res.status(404).send('Empreendimento não encontrado');
-
   res.render('empreendimento-editar', {
     // Aqui mostramos o valor cru, para o '#' herdado não virar link falso
     empreendimento: {
@@ -175,37 +164,35 @@ router.get('/empreendimentos/:id/editar', (req, res) => {
 });
 
 router.post('/empreendimentos/:id', (req, res) => {
-  const {
-    nome, endereco, status, descricao, memorialLink, plantaLink, tabelaVendaLink,
-    razaoSocial, cnpj, socioAdmin, email, cep
-  } = req.body;
-
+  const { nome, endereco, status, descricao, memorialLink, plantaLink, tabelaVendaLink, razaoSocial, cnpj, socioAdmin, email, cep } = req.body;
   if (!(nome || '').trim()) {
     return res.redirect(`/empreendimentos/${req.params.id}/editar?erro=${encodeURIComponent('Informe o nome do empreendimento.')}`);
   }
-
   db.prepare(`
     UPDATE empreendimentos
-    SET nome = ?, endereco = ?, status = ?, descricao = ?,
-        memorialLink = ?, plantaLink = ?, tabelaVendaLink = ?,
-        razaoSocial = ?, cnpj = ?, socioAdmin = ?, email = ?, cep = ?
+    SET nome = ?, endereco = ?, status = ?, descricao = ?, memorialLink = ?, plantaLink = ?, tabelaVendaLink = ?, razaoSocial = ?, cnpj = ?, socioAdmin = ?, email = ?, cep = ?
     WHERE id = ?
   `).run([
-    nome, endereco || null, status || 'ativo', descricao || null,
+    nome,
+    endereco || null,
+    status || 'ativo',
+    descricao || null,
     (memorialLink || '').trim() || null,
     (plantaLink || '').trim() || null,
     (tabelaVendaLink || '').trim() || null,
-    razaoSocial || null, cnpj || null, socioAdmin || null, email || null, cep || null,
+    razaoSocial || null,
+    cnpj || null,
+    socioAdmin || null,
+    email || null,
+    cep || null,
     req.params.id
   ]);
-
   res.redirect(`/empreendimentos/${req.params.id}?ok=1`);
 });
 
 router.get('/empreendimentos/:id/excluir', (req, res) => {
   const empreendimento = db.prepare('SELECT * FROM empreendimentos WHERE id = ?').get(req.params.id);
   if (!empreendimento) return res.status(404).send('Empreendimento não encontrado');
-
   res.render('empreendimento-excluir', {
     empreendimento,
     impacto: exclusao.impactoEmpreendimento(empreendimento.id)
@@ -219,20 +206,13 @@ router.post('/empreendimentos/:id/excluir', (req, res) => {
 
 router.get('/empreendimentos/:id', (req, res) => {
   const empreendimento = db.prepare('SELECT * FROM empreendimentos WHERE id = ?').get(req.params.id);
-
   if (!empreendimento) {
     return res.status(404).send('Empreendimento não encontrado');
   }
-
   const unidadesDoEmpreendimento = db.prepare(
     'SELECT * FROM unidades WHERE empreendimentoId = ?'
-  ).all(empreendimento.id).map((u) => ({
-    ...u,
-    statusLabel: unidadeStatusMap[u.status] || u.status
-  }));
-
+  ).all(empreendimento.id).map((u) => ({ ...u, statusLabel: unidadeStatusMap[u.status] || u.status }));
   const resumo = getResumoUnidades(unidadesDoEmpreendimento);
-
   res.render('empreendimento-detalhe', {
     empreendimento: {
       ...comLinksNormalizados(empreendimento),
@@ -248,7 +228,6 @@ router.get('/empreendimentos/:id', (req, res) => {
 });
 
 // ---------- Unidades ----------
-
 function voltarParaEmpreendimento(res, id, erro) {
   const sufixo = erro ? `?erro=${encodeURIComponent(erro)}` : '?ok=1';
   res.redirect(`/empreendimentos/${id}${sufixo}`);
@@ -266,16 +245,10 @@ router.post('/empreendimentos/:id/unidades', (req, res) => {
 router.post('/empreendimentos/:id/unidades/lote', (req, res) => {
   try {
     const { criadas, puladas } = unidades.criarEmLote({ empreendimentoId: req.params.id, ...req.body });
-
     if (criadas === 0) {
-      return voltarParaEmpreendimento(res, req.params.id,
-        `Nenhuma unidade criada — todas já existiam (${puladas.join(', ')}).`);
+      return voltarParaEmpreendimento(res, req.params.id, `Nenhuma unidade criada — todas já existiam (${puladas.join(', ')}).`);
     }
-
-    const aviso = puladas.length
-      ? `${criadas} unidades criadas. ${puladas.length} já existiam e foram mantidas.`
-      : null;
-
+    const aviso = puladas.length ? `${criadas} unidades criadas. ${puladas.length} já existiam e foram mantidas.` : null;
     res.redirect(`/empreendimentos/${req.params.id}?ok=1${aviso ? `&aviso=${encodeURIComponent(aviso)}` : ''}`);
   } catch (err) {
     voltarParaEmpreendimento(res, req.params.id, err.message);
@@ -285,15 +258,8 @@ router.post('/empreendimentos/:id/unidades/lote', (req, res) => {
 router.get('/unidades/:id/editar', (req, res) => {
   const unidade = db.prepare('SELECT * FROM unidades WHERE id = ?').get(parseInt(req.params.id));
   if (!unidade) return res.status(404).send('Unidade não encontrada');
-
   const empreendimento = db.prepare('SELECT * FROM empreendimentos WHERE id = ?').get(unidade.empreendimentoId);
-
-  res.render('unidade-editar', {
-    unidade,
-    empreendimento,
-    statusMap: unidadeStatusMap,
-    erro: req.query.erro || null
-  });
+  res.render('unidade-editar', { unidade, empreendimento, statusMap: unidadeStatusMap, erro: req.query.erro || null });
 });
 
 router.post('/unidades/:id', (req, res) => {
@@ -315,36 +281,23 @@ router.post('/unidades/:id/excluir', (req, res) => {
 router.get('/espelho', (req, res) => {
   const empreendimentos = db.prepare('SELECT * FROM empreendimentos').all();
   const empreendimentoId = req.query.empreendimento || empreendimentos[0]?.id;
-
   const empreendimentoSelecionado = empreendimentos.find(e => e.id === empreendimentoId);
-
   const unidades = db.prepare(`
     SELECT u.*, c.nome as clienteNome
     FROM unidades u
     LEFT JOIN clientes c ON u.clienteId = c.id
     WHERE u.empreendimentoId = ?
-  `).all(empreendimentoId).map((u) => ({
-    ...u,
-    statusLabel: unidadeStatusMap[u.status] || u.status
-  }));
-
-  res.render('espelho', {
-    empreendimentos,
-    empreendimentoSelecionado,
-    unidades
-  });
+  `).all(empreendimentoId).map((u) => ({ ...u, statusLabel: unidadeStatusMap[u.status] || u.status }));
+  res.render('espelho', { empreendimentos, empreendimentoSelecionado, unidades });
 });
 
 router.get('/clientes', (req, res) => {
   const clientes = db.prepare(`
-    SELECT cl.*,
-      COALESCE(e.nome, 'Não vinculado') as empreendimentoNome,
-      COALESCE(u.numero, 'Não vinculada') as unidadeNumero
+    SELECT cl.*, COALESCE(e.nome, 'Não vinculado') as empreendimentoNome, COALESCE(u.numero, 'Não vinculada') as unidadeNumero
     FROM clientes cl
     LEFT JOIN empreendimentos e ON cl.empreendimentoId = e.id
     LEFT JOIN unidades u ON cl.unidadeId = u.id
   `).all();
-
   res.render('clientes', { clientes, erro: req.query.erro || null });
 });
 
@@ -352,59 +305,44 @@ router.get('/clientes', (req, res) => {
 // O CPF/CNPJ é a chave que liga esse cadastro à resposta do formulário depois.
 router.post('/clientes', (req, res) => {
   const { nome, cpfCnpj, telefone, email, tipo, observacoes } = req.body;
-
   if (!(nome || '').trim()) {
     return res.redirect(`/clientes?erro=${encodeURIComponent('Informe o nome do cliente.')}`);
   }
-
   const documento = (cpfCnpj || '').trim();
-  const jaExiste = documento
-    ? db.prepare('SELECT nome FROM clientes WHERE cpfCnpj = ?').get(documento)
-    : null;
-
+  const jaExiste = documento ? db.prepare('SELECT nome FROM clientes WHERE cpfCnpj = ?').get(documento) : null;
   if (jaExiste) {
     return res.redirect(
       `/clientes?erro=${encodeURIComponent(`Já existe um cliente com esse CPF/CNPJ: ${jaExiste.nome}`)}`
     );
   }
-
   db.prepare(
     'INSERT INTO clientes (nome, cpfCnpj, telefone, email, tipo, observacoes) VALUES (?, ?, ?, ?, ?, ?)'
   ).run([nome, documento || null, telefone || null, email || null, tipo || 'Comprador', observacoes || null]);
-
   res.redirect('/clientes');
 });
 
 router.get('/clientes/:id/editar', (req, res) => {
   const cliente = db.prepare('SELECT * FROM clientes WHERE id = ?').get(parseInt(req.params.id));
   if (!cliente) return res.status(404).send('Cliente não encontrado');
-
   res.render('cliente-editar', { cliente, erro: req.query.erro || null });
 });
 
 router.post('/clientes/:id', (req, res) => {
   const id = parseInt(req.params.id);
   const { nome, cpfCnpj, telefone, email, tipo, observacoes } = req.body;
-
   if (!(nome || '').trim()) {
     return res.redirect(`/clientes/${id}/editar?erro=${encodeURIComponent('Informe o nome do cliente.')}`);
   }
-
   const documento = (cpfCnpj || '').trim();
-  const conflito = documento
-    ? db.prepare('SELECT nome FROM clientes WHERE cpfCnpj = ? AND id <> ?').get([documento, id])
-    : null;
-
+  const conflito = documento ? db.prepare('SELECT nome FROM clientes WHERE cpfCnpj = ? AND id <> ?').get([documento, id]) : null;
   if (conflito) {
     return res.redirect(
       `/clientes/${id}/editar?erro=${encodeURIComponent(`Outro cliente já usa esse CPF/CNPJ: ${conflito.nome}`)}`
     );
   }
-
   db.prepare(
     'UPDATE clientes SET nome = ?, cpfCnpj = ?, telefone = ?, email = ?, tipo = ?, observacoes = ? WHERE id = ?'
   ).run([nome, documento || null, telefone || null, email || null, tipo || 'Comprador', observacoes || null, id]);
-
   res.redirect('/clientes');
 });
 
@@ -412,7 +350,6 @@ router.post('/clientes/:id', (req, res) => {
 router.get('/clientes/:id/excluir', (req, res) => {
   const cliente = db.prepare('SELECT * FROM clientes WHERE id = ?').get(parseInt(req.params.id));
   if (!cliente) return res.status(404).send('Cliente não encontrado');
-
   res.render('cliente-excluir', { cliente, impacto: exclusao.impactoCliente(cliente.id) });
 });
 
@@ -427,7 +364,6 @@ router.post('/contratos/:id/excluir', (req, res) => {
 });
 
 // ---------- Envio de documento existente ----------
-
 function dadosDoFormularioDeEnvio(req) {
   return {
     clientes: db.prepare('SELECT id, nome, cpfCnpj FROM clientes ORDER BY nome').all(),
@@ -440,9 +376,7 @@ function dadosDoFormularioDeEnvio(req) {
     contratoPreSelecionado: req.query.contrato || '',
     // Contratos aguardando documento, por cliente — o upload pode satisfazê-los
     pendentesPorCliente: db.prepare(`
-      SELECT id, nome, clienteId FROM contratos
-      WHERE status IN ('pendente', 'em_preenchimento')
-      ORDER BY created_at
+      SELECT id, nome, clienteId FROM contratos WHERE status IN ('pendente', 'em_preenchimento') ORDER BY created_at
     `).all(),
     erro: req.query.erro || null
   };
@@ -455,32 +389,23 @@ router.get('/documentos/enviar', (req, res) => {
 router.post('/documentos/enviar', (req, res) => {
   upload.receber(req, res, (erroUpload) => {
     if (erroUpload) {
-      const msg = erroUpload.code === 'LIMIT_FILE_SIZE'
-        ? `Arquivo maior que ${Math.round(upload.TAMANHO_MAXIMO / (1024 * 1024))} MB.`
-        : erroUpload.message;
+      const msg = erroUpload.code === 'LIMIT_FILE_SIZE' ? `Arquivo maior que ${Math.round(upload.TAMANHO_MAXIMO / (1024 * 1024))} MB.` : erroUpload.message;
       return res.redirect(`/documentos/enviar?erro=${encodeURIComponent(msg)}`);
     }
-
     if (!req.file) {
       return res.redirect(`/documentos/enviar?erro=${encodeURIComponent('Escolha um arquivo.')}`);
     }
-
     try {
       if (!req.body.tipo) throw new Error('Escolha o tipo do documento.');
-
       const vinculos = upload.resolverVinculos(req.body);
-      const r = upload.registrar({
-        vinculos,
-        tipo: req.body.tipo,
-        arquivo: req.file,
-        contratoId: req.body.contratoId
-      });
-
+      const r = upload.registrar({ vinculos, tipo: req.body.tipo, arquivo: req.file, contratoId: req.body.contratoId });
       // Se atendeu um contrato que estava aguardando, leva de volta para lá
       res.redirect(r.contratoAtendido ? '/contratos?anexado=1' : '/documentos?enviado=1');
     } catch (err) {
       // Falhou depois de gravar o arquivo: remove para não deixar órfão
-      try { fs.unlinkSync(req.file.path); } catch (_) {}
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (_) {}
       res.redirect(`/documentos/enviar?erro=${encodeURIComponent(err.message)}`);
     }
   });
@@ -495,65 +420,28 @@ router.get('/contratos', (req, res) => {
   const empreendimentos = db.prepare('SELECT * FROM empreendimentos').all();
   const clientes = db.prepare('SELECT * FROM clientes').all();
   const unidades = db.prepare('SELECT * FROM unidades').all();
-
   // Cada situação diz o que está acontecendo e qual é o próximo passo.
   const situacoes = {
-    pendente: {
-      rotulo: 'Aguardando',
-      explica: 'Esperando o formulário ser preenchido, ou o documento assinado ser enviado.',
-      cor: 'amarelo'
-    },
-    em_preenchimento: {
-      rotulo: 'Em preenchimento',
-      explica: 'O formulário chegou e o documento está sendo montado.',
-      cor: 'azul'
-    },
-    gerado: {
-      rotulo: 'Gerado',
-      explica: 'Documento pronto, criado pelo sistema.',
-      cor: 'verde'
-    },
-    anexado: {
-      rotulo: 'Anexado',
-      explica: 'Documento enviado pela equipe, não gerado pelo sistema.',
-      cor: 'verde'
-    },
+    pendente: { rotulo: 'Aguardando', explica: 'Esperando o formulário ser preenchido, ou o documento assinado ser enviado.', cor: 'amarelo' },
+    em_preenchimento: { rotulo: 'Em preenchimento', explica: 'O formulário chegou e o documento está sendo montado.', cor: 'azul' },
+    gerado: { rotulo: 'Gerado', explica: 'Documento pronto, criado pelo sistema.', cor: 'verde' },
+    anexado: { rotulo: 'Anexado', explica: 'Documento enviado pela equipe, não gerado pelo sistema.', cor: 'verde' },
     disponivel: { rotulo: 'Disponível', explica: '', cor: 'cinza' }
   };
-
   // Documentos de verdade, para a operação parar de mentir sobre o que mostra
   const documentosPorContrato = {};
   db.prepare(`
-    SELECT id, contratoId, caminho, origem, nome, data
-    FROM documentos WHERE contratoId IS NOT NULL
+    SELECT id, contratoId, caminho, origem, nome, data FROM documentos WHERE contratoId IS NOT NULL
   `).all().forEach((d) => {
     const relativo = String(d.caminho || '').replace(/^\/storage\//, '');
-    documentosPorContrato[d.contratoId] = {
-      ...d,
-      disponivel: Boolean(relativo) && fs.existsSync(path.join(__dirname, '..', 'storage', relativo))
-    };
+    documentosPorContrato[d.contratoId] = { ...d, disponivel: Boolean(relativo) && fs.existsSync(path.join(__dirname, '..', 'storage', relativo)) };
   });
-
   const contratosEnriquecidos = db.prepare(`
-    SELECT ct.*,
-      cl.nome as clienteNome,
-      e.nome as empreendimentoNome,
-      u.numero as unidadeNumero
-    FROM contratos ct
-    LEFT JOIN clientes cl ON ct.clienteId = cl.id
-    LEFT JOIN empreendimentos e ON ct.empreendimentoId = e.id
-    LEFT JOIN unidades u ON ct.unidadeId = u.id
+    SELECT ct.*, cl.nome as clienteNome, e.nome as empreendimentoNome, u.numero as unidadeNumero FROM contratos ct LEFT JOIN clientes cl ON ct.clienteId = cl.id LEFT JOIN empreendimentos e ON ct.empreendimentoId = e.id LEFT JOIN unidades u ON ct.unidadeId = u.id
   `).all().map((c) => {
     const s = situacoes[c.status] || { rotulo: c.status, explica: '', cor: 'cinza' };
-    return {
-      ...c,
-      statusLabel: s.rotulo,
-      statusExplica: s.explica,
-      statusCor: s.cor,
-      documento: documentosPorContrato[c.id] || null
-    };
+    return { ...c, statusLabel: s.rotulo, statusExplica: s.explica, statusCor: s.cor, documento: documentosPorContrato[c.id] || null };
   });
-
   const operacoesMap = {};
   contratosEnriquecidos.forEach((c) => {
     const key = `${c.clienteId}-${c.unidadeId}`;
@@ -571,35 +459,18 @@ router.get('/contratos', (req, res) => {
     }
     operacoesMap[key].contratos.push(c);
   });
-
   const prontos = (c) => ['gerado', 'anexado'].includes(c.status);
-
   const operacoes = Object.values(operacoesMap).map((op) => {
     const concluidos = op.contratos.filter(prontos).length;
     const aguardando = op.contratos.filter((c) => c.status === 'pendente').length;
-
-    return {
-      ...op,
-      concluidos,
-      total: op.contratos.length,
-      aguardando,
-      statusGeral: concluidos === op.contratos.length ? 'Concluído' : 'Em andamento'
-    };
+    return { ...op, concluidos, total: op.contratos.length, aguardando, statusGeral: concluidos === op.contratos.length ? 'Concluído' : 'Em andamento' };
   });
-
-  res.render('contratos', {
-    operacoes, clientes, empreendimentos, unidades,
-    anexado: Boolean(req.query.anexado),
-    aproveitados: parseInt(req.query.aproveitados) || 0,
-    formLink: 'https://docs.google.com/forms/d/e/1FAIpQLSeqABI1z4kCqJUjv9gK3hc45BldUVBJcCjNiT13FyY2tF_V5Q/viewform'
-  });
+  res.render('contratos', { operacoes, clientes, empreendimentos, unidades, anexado: Boolean(req.query.anexado), aproveitados: parseInt(req.query.aproveitados) || 0, formLink: 'https://docs.google.com/forms/d/e/1FAIpQLSeqABI1z4kCqJUjv9gK3hc45BldUVBJcCjNiT13FyY2tF_V5Q/viewform' });
 });
 
 router.post('/contratos/iniciar', (req, res) => {
   const { clienteId, empreendimentoId, unidadeId, categoriaOperacao, observacoes } = req.body;
-
   const operacaoId = `op-${Date.now()}`;
-
   const templatesMap = {
     compra_venda: [
       { nome: 'Contrato de Promessa de Compra e Venda', categoria: 'Compra e Venda' },
@@ -614,43 +485,22 @@ router.post('/contratos/iniciar', (req, res) => {
       { nome: 'Termo de Reserva', categoria: 'Reserva' }
     ]
   };
-
   const templates = templatesMap[categoriaOperacao] || [];
   const FORM_LINK = 'https://docs.google.com/forms/d/10F6hk-zWLtZkzk2Xhnn-X1Tu5q2UVh9WXmlBOfu_5EU/viewform';
   const ins = db.prepare(
     'INSERT INTO contratos (id, nome, categoria, status, formLink, empreendimentoId, unidadeId, clienteId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   );
-
   const criados = templates.map((template, i) => {
     const id = `${operacaoId}-${i}`;
-    ins.run([
-      id,
-      template.nome,
-      template.categoria,
-      'pendente',
-      FORM_LINK,
-      empreendimentoId,
-      unidadeId ? parseInt(unidadeId) : null,
-      parseInt(clienteId)
-    ]);
+    ins.run([ id, template.nome, template.categoria, 'pendente', FORM_LINK, empreendimentoId, unidadeId ? parseInt(unidadeId) : null, parseInt(clienteId) ]);
     return { id, nome: template.nome };
   });
-
   // O formulário pode ter chegado antes desta operação existir. Se o documento
   // já está pronto, o pendente adota em vez de ficar esperando à toa.
-  const aproveitados = retroativo.aproveitarDocumentosExistentes({
-    clienteId,
-    contratos: criados
-  });
-
+  const aproveitados = retroativo.aproveitarDocumentosExistentes({ clienteId, contratos: criados });
   if (unidadeId) {
-    db.prepare('UPDATE unidades SET status = ?, clienteId = ? WHERE id = ?').run([
-      'negociacao',
-      parseInt(clienteId),
-      parseInt(unidadeId)
-    ]);
+    db.prepare('UPDATE unidades SET status = ?, clienteId = ? WHERE id = ?').run([ 'negociacao', parseInt(clienteId), parseInt(unidadeId) ]);
   }
-
   const qs = aproveitados.length ? `?aproveitados=${aproveitados.length}` : '';
   res.redirect(`/contratos${qs}`);
 });
@@ -658,34 +508,33 @@ router.post('/contratos/iniciar', (req, res) => {
 router.get('/financeiro', (req, res) => {
   const empreendimentos = db.prepare('SELECT * FROM empreendimentos').all();
   const empreendimentoId = req.query.empreendimento || 'todos';
-
   let financeiroComRelacionamento;
-
+  
+  // Alterado para filtrar apenas lançamentos do tipo 'entrada' (recebimentos)
   if (empreendimentoId !== 'todos') {
     financeiroComRelacionamento = db.prepare(`
       SELECT f.*, COALESCE(e.nome, 'Não vinculado') as empreendimentoNome
       FROM financeiro f
       LEFT JOIN empreendimentos e ON f.empreendimentoId = e.id
-      WHERE f.empreendimentoId = ?
+      WHERE f.empreendimentoId = ? AND f.tipo = 'entrada'
     `).all(empreendimentoId);
   } else {
     financeiroComRelacionamento = db.prepare(`
       SELECT f.*, COALESCE(e.nome, 'Não vinculado') as empreendimentoNome
       FROM financeiro f
       LEFT JOIN empreendimentos e ON f.empreendimentoId = e.id
+      WHERE f.tipo = 'entrada'
     `).all();
   }
-
+  
   const lancamentos = financeiroComRelacionamento
     .map(financeiro.enriquecer)
     .map((item) => ({ ...item, tipoLabel: financeiroTipoMap[item.tipo] || item.tipo }))
     .sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
-
+    
   const filtro = req.query.situacao;
-  const visiveis = ['previsto', 'atrasado', 'recebido'].includes(filtro)
-    ? lancamentos.filter((l) => l.situacao === filtro)
-    : lancamentos;
-
+  const visiveis = ['previsto', 'atrasado', 'recebido'].includes(filtro) ? lancamentos.filter((l) => l.situacao === filtro) : lancamentos;
+  
   res.render('financeiro', {
     financeiro: visiveis,
     totais: financeiro.totais(lancamentos),
@@ -702,7 +551,6 @@ router.get('/financeiro', (req, res) => {
 });
 
 // ---------- Ações do financeiro ----------
-
 function voltarParaFinanceiro(req, res, erro) {
   const qs = new URLSearchParams();
   if (req.body.empreendimento || req.query.empreendimento) {
