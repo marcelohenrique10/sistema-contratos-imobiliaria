@@ -4,42 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Entrar — Sistema De Marchi</title>
+  <link rel="icon" href="/img/marca.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" />
   <link rel="stylesheet" href="/css/style.css" />
-  <style>
-    body.login-page {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      background: #f8fafc;
-      margin: 0;
-    }
-    .login-card {
-      background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 4px 24px rgba(15, 23, 42, .08);
-      padding: 40px;
-      width: 100%;
-      max-width: 380px;
-    }
-    .login-card h1 { margin: 0 0 4px; font-size: 22px; color: #0f172a; }
-    .login-card .sub { margin: 0 0 28px; color: #64748b; font-size: 14px; }
-    .login-card label { display: block; margin-bottom: 6px; font-size: 14px; color: #334155; }
-    .login-card input {
-      width: 100%; padding: 10px 12px; font-size: 15px;
-      border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 18px;
-    }
-    .login-card input:focus { outline: 2px solid #2563eb; outline-offset: 1px; border-color: #2563eb; }
-    .login-card button { width: 100%; padding: 11px; font-size: 15px; cursor: pointer; }
-    .erro {
-      background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;
-      padding: 10px 12px; border-radius: 6px; font-size: 14px; margin-bottom: 18px;
-    }
-  </style>
 </head>
 <body class="login-page">
   <form class="login-card" action="/login" method="POST">
-    <h1>Sistema De Marchi</h1>
+    <img class="logo" src="/img/logo.svg" alt="De Marchi Incorporadora" />
+    <h1>Sistema de contratos</h1>
     <p class="sub">Acesso restrito à equipe.</p>
 
     <% if (erro) { %>

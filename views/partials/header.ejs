@@ -4,14 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema De Marchi</title>
+  <link rel="icon" href="/img/marca.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" />
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">
+    <a class="brand" href="/espelho">
+      <%# A logo é a identificação visível; o texto fica para leitor de tela %>
+      <img class="logo" src="/img/logo-clara.svg" alt="De Marchi Incorporadora" />
       <h1>Sistema De Marchi</h1>
       <p>Controle operacional e financeiro</p>
-    </div>
+    </a>
 
     <%
       // `ehAdmin` e `usuario` vêm de res.locals, definidos em exigirLogin.

@@ -1,435 +1,704 @@
-* { 
-  box-sizing: border-box; 
-} 
+/* =====================================================================
+   Sistema De Marchi — folha de estilo
 
-body { 
-  margin: 0; 
-  font-family: Arial, sans-serif; 
-  background: #f4f6f9; 
-  color: #1f2937; 
-} 
+   A paleta sai da logo: o azul-petróleo #0D3444 do texto e o ocre #DE8E32
+   da marca. O azul carrega a interface (barra, botões, links, foco); o ocre
+   entra pouquíssimo, porque âmbar já significa "em negociação" no espelho e
+   duas coisas âmbares na mesma tela confundem.
 
-.topbar { 
-  background: #0f172a; 
-  color: white; 
-  padding: 18px 28px; 
-  display: flex; 
-  justify-content: space-between; 
-  align-items: center; 
-  gap: 24px; 
-  flex-wrap: wrap; 
-} 
+   As cores de situação (livre/negociação/vendido/permutado/cancelado) são
+   semânticas, definidas com o cliente. Não são cores de marca e não mudam.
+   ===================================================================== */
 
-.brand h1 { 
-  margin: 0; 
-  font-size: 24px; 
-} 
+:root {
+  /* ---- marca ---- */
+  --marca:        #0d3444;
+  --marca-escura: #08222d;
+  --marca-clara:  #1a5670;
+  --marca-lavada: #eaf0f3;
+  --ocre:         #de8e32;
 
-.brand p { 
-  margin: 4px 0 0; 
-  color: #cbd5e1; 
-  font-size: 14px; 
-} 
+  /* ---- neutros, puxados para o frio da marca ---- */
+  --fundo:        #f3f6f8;
+  --superficie:   #ffffff;
+  --linha:        #dce3e8;
+  --linha-forte:  #c3ced6;
+  --texto:        #16232b;
+  --texto-suave:  #5b6b76;
+  --texto-fraco:  #8695a0;
 
-.menu { 
-  display: flex; 
-  gap: 16px; 
-  flex-wrap: wrap; 
-} 
+  /* ---- semânticas ---- */
+  --ok:        #15803d;  --ok-fundo:     #eefaf1;  --ok-linha:     #b7e4c5;
+  --atencao:   #b45309;  --atencao-fundo:#fff8ec;  --atencao-linha:#f6dcae;
+  --perigo:    #b3261e;  --perigo-fundo: #fdf0ef;  --perigo-linha: #f3c4c0;
+  --info:      #1a5670;  --info-fundo:   #eef4f7;  --info-linha:   #c3d8e2;
 
-.menu a { 
-  color: white; 
-  text-decoration: none; 
-  font-weight: bold; 
-} 
+  /* ---- forma ---- */
+  --raio:    10px;
+  --raio-sm: 6px;
+  --sombra:    0 1px 2px rgba(13, 52, 68, .06);
+  --sombra-md: 0 4px 14px rgba(13, 52, 68, .09);
+  --foco: 0 0 0 3px rgba(26, 86, 112, .28);
 
-.menu a:hover { 
-  opacity: 0.8; 
-} 
-
-.container { 
-  max-width: 1200px; 
-  margin: 0 auto; 
-  padding: 24px; 
-} 
-
-.page-header { 
-  margin-bottom: 20px; 
-} 
-
-.page-header h2 { 
-  margin: 0 0 6px; 
-} 
-
-.page-header p { 
-  margin: 0; 
-  color: #6b7280; 
-} 
-
-.cards { 
-  display: grid; 
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
-  gap: 16px; 
-  margin-bottom: 24px; 
-} 
-
-.card { 
-  background: white; 
-  border-radius: 12px; 
-  padding: 20px; 
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06); 
-} 
-
-.big-number { 
-  font-size: 28px; 
-  font-weight: bold; 
-  margin-top: 12px; 
-} 
-
-.actions { 
-  display: flex; 
-  flex-wrap: wrap; 
-  gap: 12px; 
-  margin-top: 12px; 
-} 
-
-.button { 
-  display: inline-block; 
-  padding: 10px 14px; 
-  background: #1d4ed8; 
-  color: white; 
-  text-decoration: none; 
-  border-radius: 8px; 
-  border: none; 
-  cursor: pointer; 
-  font-size: 14px; 
-} 
-
-.button:hover { 
-  opacity: 0.92; 
-} 
-
-.button.secondary { 
-  background: #475569; 
-} 
-
-.button.danger { 
-  background: #dc2626; 
-} 
-
-table { 
-  width: 100%; 
-  border-collapse: collapse; 
-  background: white; 
-  border-radius: 12px; 
-  overflow: hidden; 
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06); 
-} 
-
-th, td { 
-  text-align: left; 
-  padding: 12px; 
-  border-bottom: 1px solid #e5e7eb; 
-} 
-
-th { 
-  background: #e2e8f0; 
-} 
-
-.form-card { 
-  background: white; 
-  border-radius: 12px; 
-  padding: 20px; 
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06); 
-  margin-bottom: 24px; 
-} 
-
-.form-grid { 
-  display: grid; 
-  grid-template-columns: 1fr 1fr; 
-  gap: 16px; 
-} 
-
-.form-group { 
-  display: flex; 
-  flex-direction: column; 
-  gap: 6px; 
-} 
-
-.form-group.full { 
-  grid-column: 1 / -1; 
-} 
-
-input, select, textarea { 
-  padding: 10px 12px; 
-  border: 1px solid #cbd5e1; 
-  border-radius: 8px; 
-  font-size: 14px; 
-} 
-
-textarea { 
-  min-height: 100px; 
-  resize: vertical; 
-} 
-
-.inline-form { 
-  display: inline; 
-} 
-
-.empty-state { 
-  background: white; 
-  padding: 24px; 
-  border-radius: 12px; 
-  color: #6b7280; 
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06); 
-} 
-
-@media (max-width: 768px) { 
-  .form-grid { 
-    grid-template-columns: 1fr; 
-  } 
-} 
-
-.mini-stats { 
-  display: flex; 
-  flex-wrap: wrap; 
-  gap: 10px; 
-  margin-top: 12px; 
-  color: #475569; 
-  font-size: 14px; 
-} 
-
-/*  NOVO ESPELHO DE VENDAS: CARDS COMPACTOS, MAIOR DENSIDADE E CORES COMPLETAS
-/* Aumenta a quantidade de visualizações reduzindo o tamanho mínimo de cada card (minmax) e os vãos */
-.mirror-grid { 
-  display: grid; 
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); 
-  gap: 12px; 
-} 
-
-/* Deixa o card menor, compacta o espaçamento interno e remove a borda de cima antiga */
-.unit-card { 
-  border-radius: 8px; 
-  padding: 12px; 
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05); 
-  border: 1px solid #e5e7eb; 
-  transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out; 
-} 
-
-.unit-card:hover { 
-  transform: translateY(-2px); 
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); 
-} 
-
-.unit-card p { 
-  margin: 4px 0; 
-  font-size: 12px; 
-  color: #374151; 
-  line-height: 1.4; 
-} 
-
-.unit-top { 
-  display: flex; 
-  justify-content: space-between; 
-  gap: 6px; 
-  align-items: center; 
-  margin-bottom: 8px; 
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06); 
-  padding-bottom: 6px; 
-} 
-
-.unit-number { 
-  font-weight: bold; 
-  font-size: 14px; 
-  color: #1f2937; 
-} 
-
-/* Badge interno de status com fonte em negrito e tamanho reduzido */
-.unit-status { 
-  font-size: 10px; 
-  font-weight: 800; 
-  padding: 3px 6px; 
-  border-radius: 4px; 
-  text-transform: uppercase; 
-} 
-
-/* LIVRE: Fundo verde suave com texto e badge verde escuro */
-.unit-card.status-livre { 
-  background-color: #f0fdf4; 
-  border-color: #bbf7d0; 
-} 
-.unit-card.status-livre .unit-number { 
-  color: #14532d; 
-} 
-.unit-card.status-livre .unit-status { 
-  background-color: #22c55e; 
-  color: #ffffff; 
-} 
-
-/* NEGOCIAÇÃO: Fundo amarelo suave com texto e badge laranja */
-.unit-card.status-negociacao { 
-  background-color: #fffbeb; 
-  border-color: #fde68a; 
-} 
-.unit-card.status-negociacao .unit-number { 
-  color: #78350f; 
-} 
-.unit-card.status-negociacao .unit-status { 
-  background-color: #f59e0b; 
-  color: #ffffff; 
-} 
-
-/* VENDIDO: Fundo vermelho suave com texto e badge vermelho vivo (Antes era azul!) */
-.unit-card.status-vendido { 
-  background-color: #fef2f2; 
-  border-color: #fecaca; 
-} 
-.unit-card.status-vendido .unit-number { 
-  color: #7f1d1d; 
-} 
-.unit-card.status-vendido .unit-status { 
-  background-color: #ef4444; 
-  color: #ffffff; 
-} 
-
-/* PERMUTADO: Fundo roxo suave com texto e badge roxo */
-.unit-card.status-permutado { 
-  background-color: #faf5ff; 
-  border-color: #e9d5ff; 
-} 
-.unit-card.status-permutado .unit-number { 
-  color: #581c87; 
-} 
-.unit-card.status-permutado .unit-status { 
-  background-color: #a855f7; 
-  color: #ffffff; 
-} 
-
-/* CANCELADO: Fundo cinza suave com texto e badge cinza */
-.unit-card.status-cancelado { 
-  background-color: #f9fafb; 
-  border-color: #e5e7eb; 
-} 
-.unit-card.status-cancelado .unit-number { 
-  color: #374151; 
-} 
-.unit-card.status-cancelado .unit-status { 
-  background-color: #6b7280; 
-  color: #ffffff; 
-} 
-
-/* ========================================================================== */
-
-.card:nth-child(1) .big-number { color: #15803d; } 
-.card:nth-child(2) .big-number { color: #b91c1c; } 
-.card:nth-child(3) .big-number { color: #1d4ed8; } 
-
-.op-status { 
-  font-size: 12px; 
-  font-weight: bold; 
-  padding: 4px 10px; 
-  border-radius: 999px; 
-} 
-
-.op-status-andamento { 
-  background: #fef9c3; 
-  color: #92400e; 
-} 
-
-.op-status-concluido { 
-  background: #dcfce7; 
-  color: #15803d; 
-} 
-
-.menu .btn-upload { 
-  background: #2563eb; 
-  color: #fff; 
-  padding: 0.4rem 0.9rem; 
-  border-radius: 6px; 
-  font-weight: 600; 
-} 
-
-.menu .btn-upload:hover { 
-  background: #1d4ed8; 
+  --fonte: "Manrope", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
-/* ---------- Espelho: card clicável e compacto ---------- */
-/* O card virou <button>: precisa desfazer o visual padrão de botão. */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--fonte);
+  font-size: 15px;
+  line-height: 1.55;
+  background: var(--fundo);
+  color: var(--texto);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--marca-clara); }
+a:hover { color: var(--marca); }
+
+/* Foco visível em tudo que recebe teclado — acessibilidade não é opcional */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--marca-clara);
+  outline-offset: 2px;
+}
+
+/* =====================================================================
+   Barra superior
+   ===================================================================== */
+
+.topbar {
+  background: var(--marca);
+  color: #fff;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+  min-height: 62px;
+  box-shadow: var(--sombra-md);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+/* A logo entra como imagem; o h1/p ficam só para leitor de tela */
+.brand .logo {
+  height: 30px;
+  width: auto;
+  display: block;
+}
+
+.brand h1,
+.brand p {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.menu {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.menu a {
+  color: rgba(255, 255, 255, .82);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: var(--raio-sm);
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+
+.menu a:hover {
+  background: rgba(255, 255, 255, .1);
+  color: #fff;
+}
+
+.menu .btn-upload {
+  background: var(--ocre);
+  color: var(--marca-escura);
+  font-weight: 700;
+  padding: 8px 14px;
+  margin-left: 8px;
+}
+.menu .btn-upload:hover { background: #e9a24a; color: var(--marca-escura); }
+
+.menu form { display: flex; align-items: center; gap: 10px; }
+.menu form span { color: rgba(255, 255, 255, .6); font-size: 13px; }
+
+/* =====================================================================
+   Estrutura
+   ===================================================================== */
+
+.container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 28px 24px 64px;
+}
+
+.page-header { margin-bottom: 22px; }
+
+.page-header h2 {
+  margin: 0 0 4px;
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -.015em;
+  color: var(--texto);
+}
+
+.page-header h3 {
+  margin: 0 0 4px;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 14.5px;
+}
+
+/* =====================================================================
+   Cartões
+   ===================================================================== */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 16px;
+  margin-bottom: 26px;
+}
+
+.card {
+  background: var(--superficie);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  padding: 18px 20px;
+  box-shadow: var(--sombra);
+}
+
+.card h3,
+.card p:first-child {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--texto-fraco);
+}
+
+.big-number {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--marca);
+}
+
+.mini-stats {
+  margin: 6px 0 0 !important;
+  font-size: 12.5px !important;
+  color: var(--texto-suave) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-weight: 400 !important;
+}
+
+/* =====================================================================
+   Formulários
+   ===================================================================== */
+
+.form-card {
+  background: var(--superficie);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  padding: 22px 24px;
+  margin-bottom: 22px;
+  box-shadow: var(--sombra);
+}
+
+.form-card h3 {
+  margin: 0 0 16px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.form-group { display: flex; flex-direction: column; }
+.form-group.full { grid-column: 1 / -1; }
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--texto-suave);
+  margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  font: inherit;
+  font-size: 14.5px;
+  padding: 9px 11px;
+  border: 1px solid var(--linha-forte);
+  border-radius: var(--raio-sm);
+  background: var(--superficie);
+  color: var(--texto);
+  width: 100%;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--marca-clara);
+  box-shadow: var(--foco);
+}
+
+.form-group textarea { min-height: 80px; resize: vertical; }
+
+.form-group small {
+  margin-top: 5px;
+  font-size: 12.5px;
+  color: var(--texto-fraco);
+}
+
+.actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.inline-form { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+
+/* =====================================================================
+   Botões
+   ===================================================================== */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 9px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--raio-sm);
+  background: var(--marca);
+  color: #fff;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s, color .15s;
+}
+
+.button:hover { background: var(--marca-clara); color: #fff; }
+
+.button.secondary {
+  background: var(--superficie);
+  color: var(--texto);
+  border-color: var(--linha-forte);
+}
+.button.secondary:hover { background: var(--marca-lavada); border-color: var(--marca-clara); color: var(--marca); }
+
+.button.danger { background: var(--perigo); color: #fff; }
+.button.danger:hover { background: #8f1e17; }
+
+.button:disabled, .button[disabled] { opacity: .5; cursor: not-allowed; }
+
+/* =====================================================================
+   Tabelas
+   ===================================================================== */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--superficie);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  overflow: hidden;
+  box-shadow: var(--sombra);
+  font-size: 14px;
+}
+
+thead th {
+  background: var(--marca-lavada);
+  text-align: left;
+  padding: 11px 14px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--marca);
+  border-bottom: 1px solid var(--linha);
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--linha);
+  vertical-align: middle;
+}
+
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: #f8fafb; }
+
+/* Números alinham por dígito */
+.num, .big-number { font-variant-numeric: tabular-nums; }
+
+.empty-state {
+  background: var(--superficie);
+  border: 1px dashed var(--linha-forte);
+  border-radius: var(--raio);
+  padding: 32px 24px;
+  text-align: center;
+  color: var(--texto-suave);
+  font-size: 14.5px;
+}
+
+/* =====================================================================
+   Situação da operação
+   ===================================================================== */
+
+.op-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.op-status-andamento { background: var(--atencao-fundo); color: var(--atencao); border: 1px solid var(--atencao-linha); }
+.op-status-concluido { background: var(--ok-fundo); color: var(--ok); border: 1px solid var(--ok-linha); }
+
+/* =====================================================================
+   Espelho de vendas
+
+   Cor por situação, no cartão inteiro — decisão do cliente. São muitas
+   unidades por tela, então o cartão é pequeno e o número vem primeiro.
+   ===================================================================== */
+
+.mirror-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 10px;
+}
+
 .unit-card {
   font: inherit;
   text-align: left;
   width: 100%;
-  cursor: pointer;
   color: inherit;
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-sm);
+  padding: 11px 12px;
+  background: var(--superficie);
+  cursor: pointer;
+  box-shadow: var(--sombra);
+  transition: transform .12s, box-shadow .12s;
 }
-.unit-card:focus-visible {
-  outline: 3px solid #2563eb;
-  outline-offset: 2px;
+
+.unit-card:hover { transform: translateY(-2px); box-shadow: var(--sombra-md); }
+.unit-card:focus-visible { outline: 3px solid var(--marca-clara); outline-offset: 2px; }
+
+/* O selo cabe ao lado do número quando há espaço e cai para baixo quando não
+   há — "EM NEGOCIAÇÃO" não cabe ao lado de "1001" num cartão de 115px. */
+.unit-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 6px;
+  flex-wrap: wrap;
 }
-.unit-number { font-weight: 700; font-size: 17px; }
-.unit-meta { margin: 6px 0 0; font-size: 12px; color: #4b5563; }
+
+.unit-number { font-weight: 700; font-size: 16px; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+
+.unit-status {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: #fff;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Uma linha só: metragens de tamanhos diferentes deixavam a grade irregular */
+.unit-meta {
+  margin: 7px 0 0;
+  font-size: 12px;
+  color: var(--texto-suave);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .unit-cliente {
   margin: 3px 0 0; font-size: 12px; font-weight: 600;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-/* Mais unidades por linha: eles trabalham com prédios de 100+ */
-.mirror-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+.unit-card.status-livre       { background: #f0fbf3; border-color: #c3e6cf; }
+.unit-card.status-livre .unit-number  { color: #14532d; }
+.unit-card.status-livre .unit-status  { background: #22a05b; }
 
-/* Só o espelho escapa da largura de 1200px — é grade, não texto */
-.mirror-grid { max-width: none; }
+.unit-card.status-negociacao  { background: #fff9ed; border-color: #f3ddb2; }
+.unit-card.status-negociacao .unit-number { color: #7c4a09; }
+.unit-card.status-negociacao .unit-status { background: #d98613; }
 
-/* ---------- Painel de detalhe da unidade ---------- */
-/* A classe tem display:flex, que vence o [hidden] do navegador — sem esta
+.unit-card.status-vendido     { background: #fdf1f0; border-color: #f2c3bf; }
+.unit-card.status-vendido .unit-number { color: #7f1d1d; }
+.unit-card.status-vendido .unit-status { background: #d33b30; }
+
+.unit-card.status-permutado   { background: #f7f3fd; border-color: #ddcef5; }
+.unit-card.status-permutado .unit-number { color: #4c1d95; }
+.unit-card.status-permutado .unit-status { background: #8b5cf6; }
+
+.unit-card.status-cancelado   { background: #f6f8f9; border-color: var(--linha-forte); }
+.unit-card.status-cancelado .unit-number { color: var(--texto-suave); }
+.unit-card.status-cancelado .unit-status { background: #788994; }
+
+/* =====================================================================
+   Painel da unidade
+   ===================================================================== */
+
+/* A classe define display:flex, que vence o [hidden] do navegador — sem esta
    regra o painel nasce aberto. */
 .painel-fundo[hidden] { display: none; }
 
 .painel-fundo {
-  position: fixed; inset: 0; z-index: 50;
-  background: rgba(15, 23, 42, .55);
-  display: flex; align-items: center; justify-content: center; padding: 16px;
-}
-.painel-caixa {
-  background: #fff; border-radius: 12px; width: 100%; max-width: 420px;
-  max-height: 90vh; overflow-y: auto; padding: 22px;
-  box-shadow: 0 20px 50px rgba(15, 23, 42, .25);
-}
-.painel-topo { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.painel-topo h3 { margin: 0; font-size: 20px; }
-.painel-fechar {
-  border: none; background: none; font-size: 30px; line-height: 1;
-  cursor: pointer; color: #6b7280; padding: 0 4px;
-}
-.painel-selo {
-  display: inline-block; padding: 4px 12px; border-radius: 999px;
-  font-size: 12px; font-weight: 700; margin-bottom: 14px;
-}
-.painel-linha {
-  display: flex; justify-content: space-between; gap: 16px;
-  padding: 9px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px;
-}
-.painel-linha span { color: #6b7280; }
-.painel-form { margin-top: 20px; display: flex; flex-direction: column; gap: 8px; }
-.painel-form label { font-size: 14px; font-weight: 600; }
-.painel-form select { padding: 11px; font-size: 15px; border: 1px solid #cbd5e1; border-radius: 6px; }
-.painel-form small { color: #6b7280; font-size: 12px; }
-.painel-form button { margin-top: 6px; padding: 12px; font-size: 15px; }
-.painel-aviso {
-  margin-top: 18px; background: #fffbeb; border: 1px solid #fde68a;
-  color: #92400e; padding: 12px 14px; border-radius: 8px; font-size: 14px;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(8, 34, 45, .55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
 }
 
-/* ---------- Celular ---------- */
+.painel-caixa {
+  background: var(--superficie);
+  border-radius: var(--raio);
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 22px;
+  box-shadow: 0 20px 50px rgba(8, 34, 45, .3);
+}
+
+.painel-topo { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.painel-topo h3 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+
+.painel-fechar {
+  border: none; background: none; font-size: 28px; line-height: 1;
+  cursor: pointer; color: var(--texto-fraco); padding: 0 4px;
+}
+.painel-fechar:hover { color: var(--texto); }
+
+.painel-selo {
+  display: inline-block; padding: 4px 12px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; margin-bottom: 12px; color: #fff;
+}
+.painel-selo.status-livre      { background: #22a05b; }
+.painel-selo.status-negociacao { background: #d98613; }
+.painel-selo.status-vendido    { background: #d33b30; }
+.painel-selo.status-permutado  { background: #8b5cf6; }
+.painel-selo.status-cancelado  { background: #788994; }
+
+.painel-linha {
+  display: flex; justify-content: space-between; gap: 16px;
+  padding: 9px 0; border-bottom: 1px solid var(--linha); font-size: 14px;
+}
+.painel-linha:last-of-type { border-bottom: none; }
+.painel-linha span { color: var(--texto-suave); }
+
+.painel-form { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+.painel-form label { font-size: 13.5px; font-weight: 600; }
+.painel-form select {
+  font: inherit; padding: 11px; font-size: 15px;
+  border: 1px solid var(--linha-forte); border-radius: var(--raio-sm);
+}
+.painel-form select:focus { outline: none; border-color: var(--marca-clara); box-shadow: var(--foco); }
+.painel-form small { color: var(--texto-fraco); font-size: 12.5px; }
+.painel-form button { margin-top: 6px; padding: 12px; font-size: 15px; }
+
+.painel-aviso {
+  margin-top: 16px;
+  background: var(--atencao-fundo);
+  border: 1px solid var(--atencao-linha);
+  color: var(--atencao);
+  padding: 12px 14px;
+  border-radius: var(--raio-sm);
+  font-size: 14px;
+}
+
+/* =====================================================================
+   Entrar
+   ===================================================================== */
+
+body.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  background:
+    radial-gradient(900px 500px at 50% -15%, #16455a 0%, transparent 70%),
+    var(--marca);
+}
+
+.login-card {
+  background: var(--superficie);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(8, 34, 45, .35);
+  padding: 38px 34px 32px;
+  width: 100%;
+  max-width: 384px;
+}
+
+.login-card .logo {
+  display: block;
+  height: 38px;
+  width: auto;
+  margin: 0 auto 22px;
+}
+
+.login-card h1 {
+  margin: 0 0 4px;
+  font-size: 19px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: -.01em;
+}
+
+.login-card .sub {
+  margin: 0 0 26px;
+  color: var(--texto-suave);
+  font-size: 13.5px;
+  text-align: center;
+}
+
+.login-card label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.login-card input {
+  width: 100%;
+  font: inherit;
+  font-size: 15px;
+  padding: 11px 12px;
+  border: 1px solid var(--linha-forte);
+  border-radius: var(--raio-sm);
+  margin-bottom: 16px;
+}
+
+.login-card input:focus {
+  outline: none;
+  border-color: var(--marca-clara);
+  box-shadow: var(--foco);
+}
+
+.login-card button { width: 100%; padding: 12px; font-size: 15px; }
+
+.login-card .erro {
+  background: var(--perigo-fundo);
+  color: var(--perigo);
+  border: 1px solid var(--perigo-linha);
+  padding: 10px 12px;
+  border-radius: var(--raio-sm);
+  font-size: 13.5px;
+  margin-bottom: 18px;
+}
+
+/* =====================================================================
+   Telas pequenas
+   ===================================================================== */
+
+@media (max-width: 860px) {
+  .topbar { padding: 0 16px; gap: 10px; min-height: 0; }
+
+  /* Uma linha que desliza, em vez de três empilhadas: o menu inteiro
+     custava 22% da altura da tela antes do conteúdo começar. */
+  .menu {
+    margin-left: 0;
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 10px;
+    gap: 2px;
+  }
+  .menu::-webkit-scrollbar { display: none; }
+  .menu a { padding: 8px 10px; flex: 0 0 auto; }
+  .menu .btn-upload { margin-left: 4px; }
+  .menu form { flex: 0 0 auto; margin-left: 6px; }
+  .menu form span { display: none; }
+}
+
 @media (max-width: 640px) {
-  .topbar { padding: 12px 16px; }
-  .brand h1 { font-size: 18px; }
-  .brand p { display: none; }
-  .menu { gap: 10px; font-size: 14px; }
-  .container { padding: 16px 12px; }
-  .mirror-grid { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 8px; }
-  .unit-card { padding: 10px; }
-  .unit-number { font-size: 15px; }
+  body { font-size: 14.5px; }
+  .container { padding: 18px 14px 48px; }
+  .page-header h2 { font-size: 21px; }
+  .brand .logo { height: 26px; }
+
+  .cards { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .card { padding: 14px 16px; }
+  .big-number { font-size: 22px; }
+
   .form-grid { grid-template-columns: 1fr; }
-  /* Alvo de toque confortável nos filtros */
-  .form-group select, .form-group input { padding: 11px; font-size: 16px; }
+  /* 16px evita o navegador dar zoom ao focar o campo */
+  .form-group input, .form-group select, .form-group textarea { font-size: 16px; padding: 11px; }
+
+  .form-card { padding: 16px; }
+
+  .mirror-grid { grid-template-columns: repeat(auto-fill, minmax(106px, 1fr)); gap: 8px; }
+  .unit-card { padding: 9px 10px; }
+  .unit-number { font-size: 15px; }
+
+  /* Tabela larga rola sozinha, sem empurrar a página */
+  table { display: block; overflow-x: auto; white-space: nowrap; }
+
   .painel-caixa { max-width: none; padding: 18px; }
+  .actions { width: 100%; }
+  .actions .button { flex: 1; justify-content: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+  .unit-card:hover { transform: none; }
 }
